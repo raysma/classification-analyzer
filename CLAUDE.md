@@ -11,10 +11,10 @@ A web app that fetches a USPSA shooter's classification record by member number,
 5. Compute the average percentage required across the next N classifiers (N = 1..5) to reach the next class.
 6. Provide a "what-if" simulator: add hypothetical future scores and/or include/exclude current scores to see the resulting class %.
 
-## Prior art reviewed
+## Prior art
 
-- **`uspsaprogress/progress`** (TS + webpack + vanilla DOM, ISC). User pastes a TSV from the USPSA page; the app parses it and plots a rolling-average line. The math in `classifications.ts` is solid and is being ported into this project's `src/lib/rules.ts` (rolling window, MRO via classifier-number dedup, score-needed projection, all-time-best class as the "next-class-to-chase" floor). Their parsing layer is replaced because we fetch and parse HTML server-side instead of receiving pasted text. License attribution will be added in the ported file headers and a `NOTICE` file.
-- **`practiscore-editor`** (sibling private project). Used as the architectural blueprint via `architecture-template.md`. We adopt the stack (Vite + React + TS + Tailwind + Zustand + Zod + Vitest + Vercel), the layout (`src/types`, `src/lib`, `src/store`, `src/components`), the branch strategy (`develop` + `main` + branch protection + per-branch Vercel previews), and the coding conventions. We **do not** adopt the full discriminated-edit / `editLog` / undo-redo / IndexedDB session-restore machinery — there is no user-edited document in this app, so those subsystems would be load-bearing complexity with nothing to carry. The what-if scenario state is a single Zustand slice with URL serialization.
+- **`uspsaprogress/progress`** (TS + webpack + vanilla DOM, ISC). Origin of the rules math ported into `src/lib/rules.ts`: rolling window, MRO via classifier-number dedup, score-needed projection, and the "all-time-best class as the next-class-to-chase floor" UX detail. The lodash dependency is stripped during port. Attribution lives in `NOTICE` and at the top of `src/lib/rules.ts`.
+- **`practiscore-editor`** (sibling project). Architectural blueprint via `architecture-template.md`. Provides the stack (Vite + React + TS + Tailwind + Zustand + Zod + Vitest + Vercel), the project layout, the `develop` + `main` branch strategy, and the coding conventions used throughout.
 
 ## Tech stack (non-negotiables)
 
@@ -34,14 +34,14 @@ A web app that fetches a USPSA shooter's classification record by member number,
 | Hosting              | **Vercel** (production + per-branch preview) | Free static hosting + serverless function for the proxy.        |
 | Serverless           | **Vercel Function (Node 20)** for one proxy endpoint | Unavoidable: USPSA has no public JSON + no permissive CORS. |
 
-**Things to avoid by default:**
-- No additional backend, no auth, no database. The proxy function is the only server code in the repo.
-- No CSS-in-JS, no CSS modules, no component libraries with theming (MUI, Chakra). Tailwind only.
-- No Redux / Recoil / Jotai. Zustand handles all client state.
-- No `localStorage` for anything larger than a UI flag (selected division, theme).
-- No `any`. Use `unknown` and narrow.
-- No React Router until URL state is a real requirement. Tab/division state lives in Zustand; deep-link state goes in the URL search string.
-- No barrel `index.ts` re-exports — they hurt tree-shaking and grep.
+**Guardrails:**
+- The proxy function (`api/classification.ts`) is the only server code in the repo. All other logic is client-side.
+- Tailwind for all styling.
+- Zustand for all client state.
+- `localStorage` is only for UI flags (selected division, theme).
+- URL state lives in `URLSearchParams`, manipulated via a small custom hook over `history.replaceState`. No routing library.
+- TypeScript strict; `unknown` and narrow, never `any`.
+- One file per type/component; no barrel `index.ts` re-exports.
 
 ## Architecture
 
@@ -238,13 +238,21 @@ Deployment: pushes to `main` → production, pushes to any other branch → prev
 - Don't commit a scraped USPSA fixture for a real human's record without their consent — synthetic / anonymized fixtures only. The `L5727` example URL the prompt referenced is a public record but its content should still be anonymized in committed fixtures.
 - Pin `engines.node` to `24.x` and `packageManager` to a specific `pnpm@x.y.z`. Open ranges break unpredictably on Vercel.
 
-## Out of scope (for now)
+## Reference records (for fixtures and manual testing)
+
+Real USPSA records to validate parser + UI against. Sanitize / anonymize before committing as fixtures (replace member numbers and names; preserve structure, classifier codes, dates, percentages, flags).
+
+- `A154528` — annual member, expected to have a multi-division record.
+- `A86278` — annual member.
+- `L4898` — lifetime member; verifies the `L` prefix path.
+- `A155617` — **private / restricted record**. Used to validate the parser's "record not viewable" path. The function should return a 404 with `{ error: "record not viewable" }` (or similar) and the UI should render a clear message rather than a parse error.
+
+## Out of scope
 
 - Auth / accounts / saving favorites server-side.
 - Comparing two shooters head-to-head.
 - Pushing/syncing data to USPSA.
 - Mobile native apps.
-- Undo/redo or session-restore for the what-if simulator. The scenario is short-lived and shareable via URL.
 
 ## Risk register
 
@@ -255,10 +263,8 @@ Deployment: pushes to `main` → production, pushes to any other branch → prev
 
 ## Things NOT to do
 
-- Don't put rules math in components. It always ends up duplicated.
-- Don't mutate Zustand state directly from components — always call store actions.
-- Don't add a database or auth "just for analytics" or "just to remember the last lookup." LocalStorage is fine for the latter.
-- Don't reach for React Router until URL state is genuinely needed beyond what the search string can carry.
-- Don't import `lodash`. The ported math from `uspsaprogress/progress` removes its lodash dependency in the port — use native `Array`/`Math` instead.
-- Don't expand the proxy function beyond fetch+parse. No business logic on the server.
+- Don't put rules math in components — it ends up duplicated. Math lives in `src/lib/`.
+- Don't mutate Zustand state from components — always call store actions.
+- Don't import `lodash`. Use native `Array` / `Math`.
+- Don't expand the proxy function beyond fetch + parse + Zod. No business logic on the server.
 - Don't commit real members' records as fixtures without anonymizing.

@@ -11,8 +11,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 **Deliverable**: empty React app deploys to Vercel; `develop` and `main` branches both have live URLs; CI green on every PR.
 
 - [ ] `pnpm create vite@latest classification-analyzer -- --template react-ts` into a temp dir, then merge files into the repo root preserving the existing `.git/`, `README.md`, `CLAUDE.md`, `PLAN.md`.
-- [ ] Install runtime deps: `pnpm add zustand zod @tanstack/react-query recharts react-router-dom@latest linkedom`.
-  - `react-router-dom` only for `BrowserRouter` + search-param helpers; routes themselves are minimal.
+- [ ] Install runtime deps: `pnpm add zustand zod @tanstack/react-query recharts linkedom`.
   - `linkedom` is used by the Vercel Function and by parser tests in node.
 - [ ] Install dev deps: `pnpm add -D tailwindcss postcss autoprefixer vitest @testing-library/react @testing-library/jest-dom jsdom @vitejs/plugin-react eslint prettier eslint-plugin-react-hooks eslint-plugin-jsx-a11y @typescript-eslint/parser @typescript-eslint/eslint-plugin @vercel/node @playwright/test`.
 - [ ] `pnpm dlx tailwindcss init -p`. Set `content` to `['./index.html', './src/**/*.{js,ts,jsx,tsx}']`. Enable `darkMode: 'class'`.
@@ -43,6 +42,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
   - Validate `member` against `^(A|TY|FY|L)\d+$`; return 400 otherwise.
   - Fetch `https://uspsa.org/classification/<member>` with User-Agent `classification-analyzer/0.1 (+github.com/raysma/classification-analyzer)`.
   - Pass status through (404 → 404, etc).
+  - Detect "private/restricted record" pages (the response is 200 with a marker rather than a record table) and return 404 with `{ error: "record_not_viewable" }`.
   - `Cache-Control: public, s-maxage=900, stale-while-revalidate=3600`.
   - Wrap the fetch in a 10s timeout; return 504 on timeout.
 - [ ] `src/lib/parser.ts` using `linkedom`:
@@ -50,12 +50,14 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
   - Parse current-class blocks per division (letter + %).
   - Parse classifier tables per division: date, classifier code, name, hit factor, %, flag, source (club vs major match), match name when present.
 - [ ] `src/lib/validation.ts`: Zod schemas for `Classifier` and `ShooterRecord` matching the data shape in `CLAUDE.md`. Function returns `parseClassificationHtml(html: string): { ok: true; doc: ShooterRecord } | { ok: false; error: string }`.
-- [ ] Capture **3 sanitized HTML fixtures** under `tests/fixtures/uspsa/`:
-  - Active GM-class shooter with many divisions, mixed flags.
-  - Mid-class shooter (B/A) with only one or two divisions.
-  - Unclassified shooter (<4 scores in any division).
-  - Anonymize member numbers and names.
-- [ ] Snapshot tests in `src/lib/parser.test.ts` exercising all three fixtures.
+- [ ] Capture sanitized HTML fixtures under `tests/fixtures/uspsa/`, derived from the reference records listed in `CLAUDE.md`:
+  - `A154528.html` — annual, multi-division.
+  - `A86278.html` — annual, second shape sample.
+  - `L4898.html` — lifetime; exercises the `L` prefix path.
+  - `A155617.html` — private / restricted record; exercises the "record not viewable" path.
+  - Plus one optional `unclassified.html` fixture (synthesized) for a shooter with <4 scores in every division.
+  - Anonymize member numbers and names in each committed fixture. Preserve structure, classifier codes, dates, percentages, flags.
+- [ ] Snapshot tests in `src/lib/parser.test.ts` exercising every fixture, including the private-record case (parser returns the restricted-record sentinel rather than an empty record).
 - [ ] `src/api/classification.ts` (client wrapper): typed promise returning `ShooterRecord`, including the Zod parse at the boundary.
 
 **Acceptance**: hitting `/api/classification?member=<known>` on the Vercel preview returns parsed JSON; parser snapshot tests pass; Zod validation rejects a known-bad fixture.
@@ -71,8 +73,9 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 - [ ] TanStack Query wrapping `/api/classification` with key `['classification', memberNumber]`; 5-minute stale time; visible loading + error states (404 → "no member found", 504 → "timed out, try again").
 - [ ] `DivisionTabs.tsx` showing only divisions present in the record; shows score count per division.
 - [ ] `ClassifierTable.tsx` for the selected division: columns date, classifier code, name, HF, %, flag, source; sortable; default newest-first; row tooltip explains flag meaning.
-- [ ] URL-state via search params: `?m=A12345&div=CarryOptics`. The store mirrors to the URL so the page is shareable.
+- [ ] URL-state via `URLSearchParams`: `?m=A12345&div=CarryOptics`. Implement `src/lib/urlState.ts` with a `useUrlState` hook that reads `window.location.search` on mount and writes via `history.replaceState`. Store subscribes; no routing library needed.
 - [ ] Empty / unclassified states: "Only 2 of 4 classifiers in this division — needs 2 more for an initial classification."
+- [ ] Restricted-record state: if the API returns `{ error: "record_not_viewable" }`, render a clear "this shooter's record is private" message with a link to USPSA support, not a generic error.
 
 **Acceptance**: lookup an anonymized fixture member; see divisions, pick one, see the table; reload URL restores state.
 
@@ -87,7 +90,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
   - `isInvalidFlag(flag: Flag): boolean` — excludes only `I`/`Q`/`N` (permissive, matches uspsaprogress).
   - `sortClassifiers(scores): Classifier[]` — by date asc, then percent asc.
   - `class RollingWindow` with `append(c)` (MRO via classifierCode dedup, 8-max truncation) and `classificationScore(): number | null`.
-  - `bestSixOfRecentEight(window): { included: Classifier[]; dropped: Classifier[] }` — codifies our chosen behavior: n=4 → mean of 4; n=5 → mean of 5; n=6 → mean of 6; n=7 → best 6 of 7; n≥8 → best 6 of recent 8.
+  - `bestSixOfRecentEight(window): { included: Classifier[]; dropped: Classifier[] }` — doc-faithful behavior per <https://uspsa.org/classification/about>: n=4 → mean of 4; n=5 → mean of 5; n=6 → mean of 6; n=7 → best 6 of 7; n≥8 → best 6 of recent 8.
   - `getCurrentWindow(scores): RollingWindow`.
   - `getClassificationHistory(scores): ClassificationSnapshot[]` for the chart's rolling-average line.
   - `classFor(percent: number): ClassLetter`.
@@ -162,12 +165,12 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 
 ---
 
-## Open questions to confirm before Sonnet starts
+## Decisions on record
 
-1. **Stack confirmation**: keep Vite + React SPA + one Vercel Function (the plan as written), or switch to Next.js App Router (server components + built-in API routes)? Plan assumes Vite SPA.
-2. **Chart library**: Recharts. Alternatives: visx (more control, more code), Chart.js (less React-idiomatic). Plan assumes Recharts.
-3. **Fixtures**: synthesize three fully-fake records, or use your own real record (with permission) + two synthesized? Plan assumes three sanitized fixtures derived from real shape + fake identifiers.
-4. **Branch protection on `main`**: required PR review (1 or 2 reviewers)? Plan assumes 1.
-5. **Routing**: stick with search-params + `react-router-dom` `BrowserRouter`, or skip the dep and roll our own `useSearchParams` against `window.location`? Plan keeps `react-router-dom` because TanStack Query + URL state plays well with it.
-6. **`uspsaprogress` math discrepancy at n=6/7**: plan uses the doc-faithful rule (`n=6 → mean of 6`, `n=7 → best 6 of 7`) rather than uspsaprogress's `min(2, n-4)` heuristic. Confirm OK.
-7. **Polite User-Agent / ToS**: confirm we're comfortable hitting `uspsa.org` server-side from Vercel before going public. If concerns, we can add a private allow-list of member numbers initially.
+- **Stack**: Vite + React SPA + one Vercel Function. No Next.js.
+- **Chart library**: Recharts. `ComposedChart` with `Scatter` (per-classifier points), `Line` (rolling average), and `ReferenceLine` (class thresholds).
+- **Routing**: none. URL state via `URLSearchParams` + `history.replaceState` in a small `useUrlState` hook.
+- **Classification window math**: doc-faithful per <https://uspsa.org/classification/about>. n=4 → mean of 4; n=5 → mean of 5; n=6 → mean of 6; n=7 → best 6 of 7; n≥8 → best 6 of recent 8.
+- **Branch protection on `main`**: 1 reviewer required.
+- **USPSA fetch from Vercel**: approved.
+- **Fixtures**: derived from the four real records listed in `CLAUDE.md` (A154528, A86278, L4898, A155617), anonymized before commit.
