@@ -79,10 +79,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (parsed.error === 'parse_failed') {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
-      // Capture raw HTML (with tags) so we can see class names / page structure
-      const rawSnippet = html.slice(0, 3000)
-      const responseSnippet = `Page title: "${pageTitle}"\n\nHTML (first 3000 chars):\n${rawSnippet}`
-      console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" html[:500]: "${html.slice(0, 500)}"`)
+      const totalLen = html.length
+      // Skip <head> — capture body content from the middle and end
+      const midStart = Math.max(0, Math.floor(totalLen / 2) - 1500)
+      const midSnippet = html.slice(midStart, midStart + 3000)
+      const tailSnippet = html.slice(-3000)
+      const responseSnippet = `Page title: "${pageTitle}" | total html length: ${totalLen}\n\n--- MIDDLE (offset ${midStart}) ---\n${midSnippet}\n\n--- TAIL (last 3000) ---\n${tailSnippet}`
+      console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
       return
     }
