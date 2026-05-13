@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetch(url, {
         headers: {
           'User-Agent':
-            'classification-analyzer/0.1 (+https://github.com/raysma/classification-analyzer)',
+            'classification-analyzer/0.2 (+https://github.com/raysma/classification-analyzer)',
           Accept: 'text/html',
         },
       }),
