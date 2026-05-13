@@ -12,6 +12,7 @@ import SummaryCard from './components/SummaryCard'
 import ProgressChart from './components/ProgressChart'
 import ManualPastePanel from './components/ManualPastePanel'
 import ClassUpInsights from './components/ClassUpInsights'
+import WhatIfPanel from './components/whatif/WhatIfPanel'
 import { readUrlState, useUrlSync } from './lib/urlState'
 import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
 import type { Division } from './types/index'
@@ -227,6 +228,14 @@ function AppInner() {
                 Only {activeClassifiers.length} of 4 classifiers in {selectedDivision} — needs{' '}
                 {4 - activeClassifiers.length} more for an initial classification.
               </p>
+            )}
+
+            {selectedDivision && windowScores.length > 0 && (
+              <WhatIfPanel
+                windowScores={windowScores}
+                currentPercent={currentPercent}
+                division={selectedDivision}
+              />
             )}
 
             {selectedDivision && activeClassifiers.length > 0 && (
