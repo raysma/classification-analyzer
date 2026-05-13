@@ -90,26 +90,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600')
   res.status(200).json({ ...validated.data, warnings: parsed.warnings })
 }
-
-
-  const parsed = parseClassificationHtml(html)
-
-  if (!parsed.ok) {
-    if (parsed.error === 'record_not_viewable') {
-      res.status(404).json({ error: 'record_not_viewable' })
-      return
-    }
-    res.status(502).json({ error: parsed.error })
-    return
-  }
-
-  const validated = ShooterRecordSchema.safeParse(parsed.doc)
-  if (!validated.success) {
-    console.error('[classification] zod validation failed:', validated.error.message)
-    res.status(502).json({ error: 'validation_failed', issues: validated.error.issues })
-    return
-  }
-
-  res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600')
-  res.status(200).json({ ...validated.data, warnings: parsed.warnings })
-}
