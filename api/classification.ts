@@ -19,49 +19,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const url = `https://uspsa.org/classification/${encodeURIComponent(member)}`
+  const apiKey = process.env['SCRAPINGANT_API_KEY'] ?? ''
+  if (!apiKey) {
+    res.status(500).json({ error: 'scraping_not_configured' })
+    return
+  }
+
+  const targetUrl = `https://uspsa.org/classification/${encodeURIComponent(member)}`
+
+  const endpoint = new URL('https://api.scrapingant.com/v2/general')
+  endpoint.searchParams.set('url', targetUrl)
+  // browser=true uses headless Chrome to pass Cloudflare challenges (10 credits/req)
+  endpoint.searchParams.set('browser', 'true')
 
   let html: string
   try {
     const response = await withTimeout(
-      fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Cache-Control': 'no-cache',
-          Pragma: 'no-cache',
-        },
+      fetch(endpoint.toString(), {
+        headers: { 'x-api-key': apiKey },
       }),
-      10_000,
+      30_000,
     )
 
-    if (response.status === 404) {
-      res.status(404).json({ error: 'member_not_found' })
-      return
-    }
-
     if (!response.ok) {
-      let responseSnippet: string | undefined
+      let detail: string | undefined
       try {
-        responseSnippet = (await response.text()).slice(0, 1000)
+        detail = (await response.text()).slice(0, 500)
       } catch {
         // ignore
       }
-      console.error(
-        '[classification] upstream error:',
-        response.status,
-        response.statusText,
-        responseSnippet?.slice(0, 300),
-      )
-      res.status(502).json({
-        error: 'upstream_error',
-        status: response.status,
-        statusText: response.statusText,
-        responseSnippet,
-      })
+      console.error('[classification] ScrapingAnt error:', response.status, detail)
+      if (response.status === 401) {
+        res.status(500).json({ error: 'scraping_auth_failed' })
+        return
+      }
+      res.status(502).json({ error: 'fetch_failed', status: response.status })
+      return
+    }
+
+    // ScrapingAnt passes the origin HTTP status in this header
+    const originStatus = parseInt(response.headers.get('ant-status-code') ?? '200', 10)
+    if (originStatus === 404) {
+      res.status(404).json({ error: 'member_not_found' })
       return
     }
 
