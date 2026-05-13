@@ -50,6 +50,10 @@ function ErrorBanner({ error }: { error: unknown }) {
         : ''
       message = `USPSA returned an error${statusStr}. Try again in a minute, or use the manual paste below.`
       snippet = error.responseSnippet
+    } else if (error.code === 'fetch_failed') {
+      const statusStr = error.upstreamStatus ? ` (HTTP ${error.upstreamStatus})` : ''
+      message = `Fetch failed${statusStr}. The scraping service may be unavailable — try again or use manual paste.`
+      snippet = error.responseSnippet
     } else message = `Error: ${error.code}`
   } else if (error instanceof Error) {
     message = error.message

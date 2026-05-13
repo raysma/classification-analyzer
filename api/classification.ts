@@ -46,12 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch {
         // ignore
       }
-      console.error('[classification] ScrapingAnt error:', response.status, detail)
+      console.error(`[ScrapingAnt] ${response.status}:`, detail)
       if (response.status === 401) {
         res.status(500).json({ error: 'scraping_auth_failed' })
         return
       }
-      res.status(502).json({ error: 'fetch_failed', status: response.status })
+      res.status(502).json({ error: 'fetch_failed', status: response.status, responseSnippet: detail })
       return
     }
 
