@@ -31,7 +31,7 @@ const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'classification-query-cache',
+  key: 'classification-query-cache-v2',
 })
 
 function ErrorBanner({ error }: { error: unknown }) {
@@ -43,6 +43,7 @@ function ErrorBanner({ error }: { error: unknown }) {
     if (error.code === 'member_not_found') message = 'No member found with that number.'
     else if (isPrivate) message = "This shooter's record is set to private."
     else if (error.code === 'upstream_timeout') message = 'Request timed out — try again.'
+    else if (error.code === 'upstream_error') message = 'USPSA blocked the request. Try again in a minute, or use the manual paste below.'
     else message = `Error: ${error.code}`
   } else if (error instanceof Error) {
     message = error.message
@@ -78,6 +79,7 @@ function AppInner() {
     pastedRecord,
     setMemberNumber,
     setSelectedDivision,
+    setPastedRecord,
     setWarnings,
     dismissWarnings,
   } = useAppStore()
@@ -120,6 +122,7 @@ function AppInner() {
     setMemberNumber(member)
     setSelectedDivision(null)
     setWarnings([])
+    setPastedRecord(null)
   }
 
   const divisionKeys = record ? (Object.keys(record.classifiers) as Division[]) : []
