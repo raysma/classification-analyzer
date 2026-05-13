@@ -1,4 +1,5 @@
-import { parseHTML } from 'linkedom'
+import { parse } from 'node-html-parser'
+import type { HTMLElement as NHElement } from 'node-html-parser'
 import type { Division, ClassLetter, Flag, Classifier, ShooterRecord } from '../types/index'
 
 const DIVISION_MAP: Record<string, Division> = {
@@ -79,20 +80,20 @@ function parseMembershipType(
   return 'Unknown'
 }
 
-function cellText(cell: Element): string {
+function cellText(cell: NHElement): string {
   return (cell.textContent ?? '').trim()
 }
 
-function isRestrictedRecord(document: Document): boolean {
+function isRestrictedRecord(document: NHElement): boolean {
   for (const sel of RESTRICTED_SELECTORS) {
     if (document.querySelector(sel)) return true
   }
-  const bodyText = (document.body?.textContent ?? '').toLowerCase()
+  const bodyText = (document.querySelector('body')?.textContent ?? '').toLowerCase()
   return RESTRICTED_TEXTS.some((t) => bodyText.includes(t))
 }
 
 export function parseClassificationHtml(html: string): ParseResult {
-  const { document } = parseHTML(html)
+  const document = parse(html)
   const warnings: string[] = []
 
   if (isRestrictedRecord(document)) {
