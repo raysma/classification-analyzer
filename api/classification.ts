@@ -29,8 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const endpoint = new URL('https://api.scrapingant.com/v2/general')
   endpoint.searchParams.set('url', targetUrl)
-  // browser=true uses headless Chrome to pass Cloudflare challenges (10 credits/req)
+  // Residential proxy + headless browser: needed to pass Cloudflare's IP reputation
+  // check and JS challenge. Costs 250 credits/request (40 free/month on free tier).
   endpoint.searchParams.set('browser', 'true')
+  endpoint.searchParams.set('proxy_type', 'residential')
 
   let html: string
   try {
@@ -38,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fetch(endpoint.toString(), {
         headers: { 'x-api-key': apiKey },
       }),
-      30_000,
+      60_000,
     )
 
     if (!response.ok) {
