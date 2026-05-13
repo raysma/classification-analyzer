@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { parseClassificationHtml } from '../src/lib/parser'
-import { ShooterRecordSchema } from '../src/lib/validation'
+import { parseClassificationHtml } from '../src/lib/parser.js'
+import { ShooterRecordSchema } from '../src/lib/validation.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 

@@ -4,6 +4,9 @@ export class ClassificationError extends Error {
   constructor(
     public readonly code: string,
     message: string,
+    public readonly upstreamStatus?: number,
+    public readonly upstreamStatusText?: string,
+    public readonly responseSnippet?: string,
   ) {
     super(message)
     this.name = 'ClassificationError'
@@ -21,15 +24,29 @@ export async function fetchClassification(memberNumber: string): Promise<Classif
 
   if (!response.ok) {
     let errorCode = 'unknown_error'
+    let upstreamStatus: number | undefined
+    let upstreamStatusText: string | undefined
+    let responseSnippet: string | undefined
     try {
-      const body = (await response.json()) as { error?: string }
+      const body = (await response.json()) as {
+        error?: string
+        status?: number
+        statusText?: string
+        responseSnippet?: string
+      }
       if (typeof body.error === 'string') errorCode = body.error
+      if (typeof body.status === 'number') upstreamStatus = body.status
+      if (typeof body.statusText === 'string') upstreamStatusText = body.statusText
+      if (typeof body.responseSnippet === 'string') responseSnippet = body.responseSnippet
     } catch {
       // ignore parse failure
     }
     throw new ClassificationError(
       errorCode,
       `Classification request failed: ${response.status} ${errorCode}`,
+      upstreamStatus,
+      upstreamStatusText,
+      responseSnippet,
     )
   }
 

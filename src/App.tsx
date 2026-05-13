@@ -31,19 +31,26 @@ const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'classification-query-cache-v2',
+  key: 'classification-query-cache-v3',
 })
 
 function ErrorBanner({ error }: { error: unknown }) {
   if (!error) return null
   let message = 'An unexpected error occurred.'
   let isPrivate = false
+  let snippet: string | undefined
   if (error instanceof ClassificationError) {
     isPrivate = error.code === 'record_not_viewable'
     if (error.code === 'member_not_found') message = 'No member found with that number.'
     else if (isPrivate) message = "This shooter's record is set to private."
     else if (error.code === 'upstream_timeout') message = 'Request timed out — try again.'
-    else message = `Error: ${error.code}`
+    else if (error.code === 'upstream_error') {
+      const statusStr = error.upstreamStatus
+        ? ` (HTTP ${error.upstreamStatus}${error.upstreamStatusText ? ' ' + error.upstreamStatusText : ''})`
+        : ''
+      message = `USPSA returned an error${statusStr}. Try again in a minute, or use the manual paste below.`
+      snippet = error.responseSnippet
+    } else message = `Error: ${error.code}`
   } else if (error instanceof Error) {
     message = error.message
   }
@@ -52,19 +59,31 @@ function ErrorBanner({ error }: { error: unknown }) {
       role="alert"
       className="rounded-md bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-800 dark:text-red-200"
     >
-      {message}
-      {isPrivate && (
-        <span className="ml-1">
-          <a
-            href="https://uspsa.org/support"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            Contact USPSA support
-          </a>{' '}
-          to make your record public.
-        </span>
+      <p>
+        {message}
+        {isPrivate && (
+          <span className="ml-1">
+            <a
+              href="https://uspsa.org/support"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              Contact USPSA support
+            </a>{' '}
+            to make your record public.
+          </span>
+        )}
+      </p>
+      {snippet && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium opacity-70 hover:opacity-100">
+            Response details
+          </summary>
+          <pre className="mt-1 text-xs overflow-auto max-h-36 whitespace-pre-wrap break-all rounded bg-red-100 dark:bg-red-900 px-2 py-1">
+            {snippet}
+          </pre>
+        </details>
       )}
     </div>
   )
@@ -78,6 +97,7 @@ function AppInner() {
     pastedRecord,
     setMemberNumber,
     setSelectedDivision,
+    setPastedRecord,
     setWarnings,
     dismissWarnings,
   } = useAppStore()
@@ -120,6 +140,7 @@ function AppInner() {
     setMemberNumber(member)
     setSelectedDivision(null)
     setWarnings([])
+    setPastedRecord(null)
     queryClient.invalidateQueries({ queryKey: ['classification', member] })
   }
 
