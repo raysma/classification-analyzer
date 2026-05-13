@@ -8,7 +8,10 @@ import { fetchClassification, ClassificationError } from './api/classification'
 import LookupForm from './components/LookupForm'
 import DivisionTabs from './components/DivisionTabs'
 import ClassifierTable from './components/ClassifierTable'
+import SummaryCard from './components/SummaryCard'
+import ProgressChart from './components/ProgressChart'
 import { readUrlState, useUrlSync } from './lib/urlState'
+import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
 import type { Division } from './types/index'
 
 const queryClient = new QueryClient({
@@ -121,6 +124,21 @@ function AppInner() {
   const activeClassifiers =
     record && selectedDivision ? (record.classifiers[selectedDivision] ?? []) : []
 
+  const rollingWindow = activeClassifiers.length > 0 ? getCurrentWindow(activeClassifiers) : null
+  const currentPercent = rollingWindow?.classificationScore() ?? null
+  const windowScores = rollingWindow?.getScores() ?? []
+  const { included, dropped } = bestSixOfRecentEight(windowScores)
+  const history = activeClassifiers.length > 0 ? getClassificationHistory(activeClassifiers) : []
+
+  const includedIds = new Set(included.map((c) => `${c.date}:${c.classifierCode}`))
+  const droppedIds = new Set(dropped.map((c) => `${c.date}:${c.classifierCode}`))
+  const windowIds = new Set(windowScores.map((c) => `${c.date}:${c.classifierCode}`))
+  const excludedIds = new Set(
+    activeClassifiers
+      .filter((c) => !windowIds.has(`${c.date}:${c.classifierCode}`))
+      .map((c) => `${c.date}:${c.classifierCode}`),
+  )
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-4">
@@ -183,6 +201,18 @@ function AppInner() {
               </p>
             )}
 
+            {selectedDivision && activeClassifiers.length > 0 && (
+              <SummaryCard
+                currentPercent={currentPercent}
+                windowSize={windowScores.length}
+                division={selectedDivision}
+              />
+            )}
+
+            {selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
+              <ProgressChart classifiers={activeClassifiers} history={history} />
+            )}
+
             {selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
               <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
                 Only {activeClassifiers.length} of 4 classifiers in {selectedDivision} — needs{' '}
@@ -191,7 +221,12 @@ function AppInner() {
             )}
 
             {selectedDivision && activeClassifiers.length > 0 && (
-              <ClassifierTable classifiers={activeClassifiers} />
+              <ClassifierTable
+                classifiers={activeClassifiers}
+                highlightedIds={includedIds}
+                droppedIds={droppedIds}
+                excludedIds={excludedIds}
+              />
             )}
           </div>
         )}
