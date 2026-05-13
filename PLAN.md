@@ -1,124 +1,173 @@
 # Implementation Plan
 
-The plan is broken into phases. Each phase ends in a working, deployable preview on Vercel. Sonnet should execute phases in order; do not start a phase before the prior one is merged.
+Phased plan. Each phase ends in a working, deployable preview on Vercel. Sonnet should execute phases in order; merge each phase via PR to `develop` (and eventually `develop` → `main`) before starting the next.
+
+See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strategy, and coding conventions referenced throughout this plan.
+
+---
 
 ## Phase 0 — Scaffolding and infra
 
-**Deliverable**: empty React app deploys to Vercel; CI green.
+**Deliverable**: empty React app deploys to Vercel; `develop` and `main` branches both have live URLs; CI green on every PR.
 
-- [ ] `pnpm create vite@latest classification-analyzer -- --template react-ts` into the repo root (manually merge with existing `README.md` / `.git`).
-- [ ] Configure Tailwind (`tailwindcss`, `postcss`, `autoprefixer`); add base styles + dark-mode class strategy.
-- [ ] Add ESLint (typescript-eslint, react-hooks, jsx-a11y), Prettier, `lint-staged` + `husky` pre-commit (optional).
-- [ ] Add Vitest + React Testing Library; one smoke test.
-- [ ] Add Playwright with a single homepage smoke test (run in CI on Linux).
-- [ ] GitHub Actions workflow: `install → typecheck → lint → test → build` on PRs and `main`.
-- [ ] Vercel project setup: `vercel.json` if needed; Node 20 runtime for functions; preview deploys on every branch.
-- [ ] Replace placeholder `README.md` with a short user-facing description + link to PLAN.md / CLAUDE.md.
+- [ ] `pnpm create vite@latest classification-analyzer -- --template react-ts` into a temp dir, then merge files into the repo root preserving the existing `.git/`, `README.md`, `CLAUDE.md`, `PLAN.md`.
+- [ ] Install runtime deps: `pnpm add zustand zod @tanstack/react-query recharts react-router-dom@latest linkedom`.
+  - `react-router-dom` only for `BrowserRouter` + search-param helpers; routes themselves are minimal.
+  - `linkedom` is used by the Vercel Function and by parser tests in node.
+- [ ] Install dev deps: `pnpm add -D tailwindcss postcss autoprefixer vitest @testing-library/react @testing-library/jest-dom jsdom @vitejs/plugin-react eslint prettier eslint-plugin-react-hooks eslint-plugin-jsx-a11y @typescript-eslint/parser @typescript-eslint/eslint-plugin @vercel/node @playwright/test`.
+- [ ] `pnpm dlx tailwindcss init -p`. Set `content` to `['./index.html', './src/**/*.{js,ts,jsx,tsx}']`. Enable `darkMode: 'class'`.
+- [ ] Replace `src/index.css` with `@tailwind base; @tailwind components; @tailwind utilities;`.
+- [ ] `vite.config.ts`: include Vitest block (`environment: 'jsdom'`, `setupFiles` for testing-library).
+- [ ] `vercel.json`: SPA rewrite `{ "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }] }` (excluding `/api/*` from the rewrite so the function still routes).
+- [ ] `package.json` pins: `"engines": { "node": "24.x" }`, `"packageManager": "pnpm@10.33.0"` (use the current pinned versions at execution time).
+- [ ] `package.json` scripts: `dev`, `dev:api` (`vercel dev`), `build`, `test`, `test:watch`, `test:e2e`, `lint`, `format`, `typecheck`.
+- [ ] `.gitattributes`: `* text=auto`.
+- [ ] Strict `tsconfig.json` (`"strict": true`, `"noUncheckedIndexedAccess": true`, `"exactOptionalPropertyTypes": true`).
+- [ ] ESLint config covering TS, React Hooks, JSX a11y.
+- [ ] Prettier config (single quotes, no semis or with semis — pick one and pin).
+- [ ] Skeleton files: `src/main.tsx`, `src/App.tsx` rendering "Classification Analyzer", `src/types/index.ts` (empty), `src/lib/.gitkeep`, `src/store/.gitkeep`, `src/components/.gitkeep`.
+- [ ] GitHub Actions `ci.yml`: `pnpm install --frozen-lockfile → typecheck → lint → test → build`, run on PRs targeting `develop` and `main`.
+- [ ] Vercel: connect repo; set `develop` as the preview environment; enable preview deployments for all branches; protect `main` (require PR, require CI).
+- [ ] Initial PR from `claude/uspsa-classifier-analyzer-xBXXd` → `develop` once scaffolding is in.
+- [ ] Replace top-level `README.md` with a short user-facing description + link to `PLAN.md` / `CLAUDE.md`.
 
-Acceptance: PR opens a Vercel preview, CI is green, root page renders "Classification Analyzer".
+**Acceptance**: PR opens a Vercel preview at the branch URL; `develop` has its own stable preview; CI is green; the deployed page renders "Classification Analyzer".
+
+---
 
 ## Phase 1 — USPSA fetch proxy + parser
 
 **Deliverable**: `GET /api/classification?member=A12345` returns typed JSON for any valid member number.
 
-- [ ] Create `api/classification.ts` Vercel Function:
-  - Validate `member` matches `^(A|TY|FY|L)\d+$`; return 400 otherwise.
-  - Fetch `https://uspsa.org/classification/<member>` with a polite UA: `classification-analyzer/0.1 (+github.com/raysma/classification-analyzer)`.
+- [ ] `api/classification.ts` Vercel Function:
+  - Validate `member` against `^(A|TY|FY|L)\d+$`; return 400 otherwise.
+  - Fetch `https://uspsa.org/classification/<member>` with User-Agent `classification-analyzer/0.1 (+github.com/raysma/classification-analyzer)`.
   - Pass status through (404 → 404, etc).
-  - Cache-Control: `public, s-maxage=900, stale-while-revalidate=3600`.
-- [ ] Add `src/uspsa/parser.ts` using `linkedom` (works in both Node and tests):
+  - `Cache-Control: public, s-maxage=900, stale-while-revalidate=3600`.
+  - Wrap the fetch in a 10s timeout; return 504 on timeout.
+- [ ] `src/lib/parser.ts` using `linkedom`:
   - Parse shooter header (name, membership type, member number).
   - Parse current-class blocks per division (letter + %).
-  - Parse classifier tables per division: date, classifier code, classifier name, hit factor, %, flag, source (club vs major match).
-- [ ] Add `src/uspsa/types.ts` matching the data shape in `CLAUDE.md`.
-- [ ] Capture **3 sanitized HTML fixtures** under `tests/fixtures/uspsa/` (different membership types, varied flag distributions, multi-division). Snapshot-test the parser against each.
-- [ ] Wire `api/classification.ts` to call the parser and return JSON.
-- [ ] Add a thin client `src/api/classification.ts` returning a typed promise.
+  - Parse classifier tables per division: date, classifier code, name, hit factor, %, flag, source (club vs major match), match name when present.
+- [ ] `src/lib/validation.ts`: Zod schemas for `Classifier` and `ShooterRecord` matching the data shape in `CLAUDE.md`. Function returns `parseClassificationHtml(html: string): { ok: true; doc: ShooterRecord } | { ok: false; error: string }`.
+- [ ] Capture **3 sanitized HTML fixtures** under `tests/fixtures/uspsa/`:
+  - Active GM-class shooter with many divisions, mixed flags.
+  - Mid-class shooter (B/A) with only one or two divisions.
+  - Unclassified shooter (<4 scores in any division).
+  - Anonymize member numbers and names.
+- [ ] Snapshot tests in `src/lib/parser.test.ts` exercising all three fixtures.
+- [ ] `src/api/classification.ts` (client wrapper): typed promise returning `ShooterRecord`, including the Zod parse at the boundary.
 
-Acceptance: hitting `/api/classification?member=<known>` on the Vercel preview returns the parsed JSON; parser tests pass.
+**Acceptance**: hitting `/api/classification?member=<known>` on the Vercel preview returns parsed JSON; parser snapshot tests pass; Zod validation rejects a known-bad fixture.
+
+---
 
 ## Phase 2 — Lookup UX + record display
 
 **Deliverable**: user can enter a member number, see all classifiers grouped by division, pick a division.
 
-- [ ] Lookup form: input with mask hint ("e.g. A12345 / TY53124 / L5727"); inline validation; submit triggers query.
-- [ ] TanStack Query wrapping `/api/classification` with key `[member]`; 5-minute stale time; visible loading + error states (404 → "no member found").
-- [ ] Division selector chips/tabs showing only divisions with data; remember last-selected via `localStorage`.
-- [ ] Records table for the selected division: columns date, classifier code, name, HF, %, flag; sortable; default newest-first; show flag legend on hover.
-- [ ] Shareable URL: `/<memberNumber>/<division>` deep-links to a view (React Router).
-- [ ] Empty / unclassified states ("only 2 of 4 classifiers in this division — needs N more").
+- [ ] `LookupForm.tsx`: input with format hint ("e.g. A12345 / TY53124 / L5727"); inline regex validation; submit triggers a query.
+- [ ] `src/store/useAppStore.ts` Zustand slice for lookup state: `{ memberNumber, selectedDivision, lastLookupAt }`. Selected division persisted to `localStorage` (small UI flag, allowed).
+- [ ] TanStack Query wrapping `/api/classification` with key `['classification', memberNumber]`; 5-minute stale time; visible loading + error states (404 → "no member found", 504 → "timed out, try again").
+- [ ] `DivisionTabs.tsx` showing only divisions present in the record; shows score count per division.
+- [ ] `ClassifierTable.tsx` for the selected division: columns date, classifier code, name, HF, %, flag, source; sortable; default newest-first; row tooltip explains flag meaning.
+- [ ] URL-state via search params: `?m=A12345&div=CarryOptics`. The store mirrors to the URL so the page is shareable.
+- [ ] Empty / unclassified states: "Only 2 of 4 classifiers in this division — needs 2 more for an initial classification."
 
-Acceptance: enter `L5727`, see divisions, pick one, see the table; reload URL restores state.
+**Acceptance**: lookup an anonymized fixture member; see divisions, pick one, see the table; reload URL restores state.
 
-## Phase 3 — Current class display + history graph
+---
 
-**Deliverable**: big visual summary for the selected division with a trended history chart.
+## Phase 3 — Current class display + history chart
 
-- [ ] Summary card: class letter (e.g. "A"), current %, next-class threshold, gap-to-next, count of valid scores in window.
-- [ ] Implement `src/uspsa/rules.ts`:
-  - `computeWindow(classifiers)` → returns the most-recent-8 valid scores honoring `S`/`M`/`A`/`I`/`X`/`Q`/`N` flags.
-  - `bestSixOfEight(window)` → 6 scores used + 2 dropped.
-  - `currentPercent(classifiers)` → average of best 6.
-  - `classFor(percent)` → `ClassLetter`.
-  - Unit-test against the brackets and the published flag semantics.
-- [ ] Highlight rows in the Phase-2 table for scores currently in the window vs dropped.
-- [ ] Recharts line chart: x = date, y = %, dot per classifier; shaded class-band backgrounds (D/C/B/A/M/GM); optional linear regression trend line over the visible scores.
-- [ ] Toggle "show all" vs "only scores in current window".
+**Deliverable**: visible summary card for the selected division + a chart showing score history with a rolling-average line.
 
-Acceptance: summary card matches the % shown on `uspsa.org` for the same member; chart renders; rules unit tests pass.
+- [ ] Port `RollingWindow` + helpers from `uspsaprogress/progress/src/classifications.ts` into `src/lib/rules.ts`. Reimplement without `lodash` (native `Array.sort`, `.reduce`, `.slice`). Preserve attribution in a file-level comment + add NOTICE.
+- [ ] `src/lib/rules.ts` exports:
+  - `isInvalidFlag(flag: Flag): boolean` — excludes only `I`/`Q`/`N` (permissive, matches uspsaprogress).
+  - `sortClassifiers(scores): Classifier[]` — by date asc, then percent asc.
+  - `class RollingWindow` with `append(c)` (MRO via classifierCode dedup, 8-max truncation) and `classificationScore(): number | null`.
+  - `bestSixOfRecentEight(window): { included: Classifier[]; dropped: Classifier[] }` — codifies our chosen behavior: n=4 → mean of 4; n=5 → mean of 5; n=6 → mean of 6; n=7 → best 6 of 7; n≥8 → best 6 of recent 8.
+  - `getCurrentWindow(scores): RollingWindow`.
+  - `getClassificationHistory(scores): ClassificationSnapshot[]` for the chart's rolling-average line.
+  - `classFor(percent: number): ClassLetter`.
+  - `allTimeBestClass(history): ClassLetter` for the next-class-to-chase UX.
+- [ ] Unit tests covering each helper, plus a fixture-based test that exercises a full record end-to-end and pins the resulting current % / class letter.
+- [ ] `SummaryCard.tsx`: class letter, current %, next-class threshold, gap-to-next, count-in-window.
+- [ ] `ProgressChart.tsx` (Recharts): x = date, y = %, scatter dots per classifier colored by class band; reference lines for D/C/B/A/M/GM thresholds; line plot of rolling-average snapshots. Toggle: "all scores" vs "current window only".
+- [ ] Row highlighting in `ClassifierTable.tsx` for in-window scores vs dropped vs excluded.
+
+**Acceptance**: summary card matches the % shown on `uspsa.org` for the same member; chart renders; `rules.test.ts` passes with the documented n=4..8 behavior.
+
+---
 
 ## Phase 4 — Class-up insights
 
-**Deliverable**: card that tells the shooter, for N = 1..5 upcoming classifiers, the average % they'd need to class up.
+**Deliverable**: card showing, for N = 1..5 upcoming classifiers, the average % needed to class up.
 
-- [ ] In `src/uspsa/projection.ts`, implement `requiredAverageToClassUp(record, division, N)` that:
-  - Reads the current most-recent-8 window.
-  - Simulates K identical new scores at `X%` being appended (each evicts the oldest of the rolling-8 window after sorting by date desc).
-  - Binary-searches the smallest `X` such that `bestSixOfEight` of the new window ≥ next class threshold.
-  - Returns `{ minAvgPercent, feasible: boolean, scoresInWindow }`.
-- [ ] Render a row of N = 1..5 cards: each shows the required average %, plus a colored badge (green = feasible at ≤110%, red = mathematically impossible within N scores).
-- [ ] Tooltip explaining "this assumes you keep ≥X% on each of the next N classifiers".
-- [ ] Handle pre-classified case (<4 scores): show how many more are needed first.
+- [ ] `src/lib/projection.ts` (ported and extended from `scoreNeededForTarget` in uspsaprogress):
+  - `requiredAverageToClassUp(record, division, K): { minAvgPercent: number | null; feasible: boolean; targetClass: ClassLetter; targetThreshold: number; scoresInWindow: number }`.
+  - Simulate K appends of uniform percent X, recompute `bestSixOfRecentEight`, binary-search X in [0, 110].
+  - Uses `allTimeBestClass` as the floor — if the shooter has ever been A, the target is M, not A.
+- [ ] `ClassUpInsights.tsx`: row of cards for K = 1..5; each shows required average, color badge (green ≤ 100%, amber 100–110%, red > 110% / infeasible).
+- [ ] Tooltip text: "assumes you keep ≥X% on each of the next K classifiers".
+- [ ] Pre-classified case (<4 scores): card explains how many more are needed before the math applies.
+- [ ] Tests covering: A-class near M, B-class near A, fresh shooter with 0/2/4 scores, an already-GM shooter ("congratulations — top class").
 
-Acceptance: unit tests cover representative shooters (A-class shooter near M, B-class shooter, fresh shooter with 0/2 scores). Numbers reconcile with hand-calculated examples.
+**Acceptance**: hand-calculated examples in tests pass; cards render sensibly for each fixture.
+
+---
 
 ## Phase 5 — What-if simulator
 
-**Deliverable**: interactive panel to project a new class % under user-defined scenarios.
+**Deliverable**: interactive panel projecting a new class % under user-defined scenarios.
 
-- [ ] Scenario state in Zustand: `{ includedExisting: Set<scoreId>, hypothetical: HypotheticalScore[] }`.
-- [ ] Existing-scores list with checkboxes (default = current window) — unchecking simulates "what if this hadn't counted".
-- [ ] "Add hypothetical score" form: % (0–110) and a synthetic date (default = today, editable for ordering).
-- [ ] Compute projected class + % live as state changes; show delta vs current.
-- [ ] Side-by-side comparison: actual vs projected (mini chart + numbers).
+- [ ] Zustand slice `scenario`: `{ excludedExistingIds: Set<string>; hypothetical: HypotheticalScore[] }`. Reset on division change.
+- [ ] `WhatIfPanel.tsx`: list of existing in-window scores with toggle checkboxes (default = all in-window included).
+- [ ] `HypotheticalScoreForm.tsx`: add a hypothetical score (percent 0–110, synthetic date for ordering). Up to 8 hypotheticals.
+- [ ] Live recompute: feed `(currentWindow ∖ excludedExistingIds) ∪ hypothetical` through the same `bestSixOfRecentEight` pipeline; display projected class + %, delta vs current.
+- [ ] Side-by-side comparison: actual vs projected (small `ProgressChart` overlay + numbers).
+- [ ] URL serialization of the scenario as a compact query param so a scenario is shareable.
 - [ ] Reset button.
-- [ ] URL serialization of the scenario so it can be shared.
 
-Acceptance: removing the lowest in-window score raises the %; adding a 95% score moves an A-class shooter into the M band when expected.
+**Acceptance**: removing the lowest in-window score raises projected %; adding a 95% score moves an A-class shooter into the M band; reset returns the panel to the current-state baseline.
+
+---
 
 ## Phase 6 — Polish
 
-- [ ] Mobile breakpoints (lookup → table → chart stacks vertically).
-- [ ] Dark mode toggle, system preference default.
-- [ ] Accessibility pass: keyboard navigation through table + chart legend; axe-core in Playwright.
+- [ ] Mobile breakpoints (lookup → summary → table → chart stacks vertically).
+- [ ] Dark mode toggle, default to system preference.
+- [ ] Accessibility pass: keyboard navigation through table + chart legend; axe-core in Playwright; visible focus states.
 - [ ] Error boundary with friendly fallback + "report" link.
-- [ ] About page: explain rules, brackets, flag legend, source link.
-- [ ] Privacy note: we fetch publicly available data; we don't store member numbers server-side beyond function cache.
-- [ ] Optional: Plausible / Vercel Analytics (privacy-friendly) — gate behind env var.
+- [ ] About page: rules, brackets, flag legend, link to USPSA source, attribution to `uspsaprogress/progress`.
+- [ ] Privacy note: data is publicly available on uspsa.org; we don't store member numbers beyond the function's CDN cache.
+- [ ] Optional: `@vercel/analytics` + `@vercel/speed-insights` gated behind an env var. Page-view / Core Web Vitals only.
+- [ ] CHANGELOG.md kept current per release.
 
-Acceptance: Lighthouse ≥90 perf/a11y/best-practices on the production deploy.
+**Acceptance**: Lighthouse ≥90 perf/a11y/best-practices on production; axe-core finds no critical violations.
+
+---
 
 ## Cross-cutting
 
-- **Testing**: unit tests for parser, rules, projection; component tests for lookup form, table, what-if panel; one Playwright smoke that hits a mocked API.
-- **Mocking**: tests should never hit `uspsa.org`. The proxy is mocked at the fetch layer; the parser is exercised against committed fixtures.
-- **Observability**: log parser failures with the failing element selector (Vercel logs). Capture a structured event when the parser falls back to defaults.
-- **Throttling**: if we see USPSA pushback, add a 1 req/s/IP limiter to the function.
+- **Testing strategy**:
+  - Unit tests for `parser`, `rules`, `projection` — these are where bugs hide.
+  - Light component tests for `LookupForm` (validation) and `WhatIfPanel` (state wiring).
+  - One Playwright smoke that mocks `/api/classification` and walks lookup → division pick → see chart → open what-if.
+- **Mocking**: tests never hit `uspsa.org`. Parser tests exercise committed HTML fixtures. The function is mocked at the fetch layer.
+- **Observability**: log parser failures with the failing selector / fixture digest (Vercel function logs). Counter for "parser fell back to defaults" events.
+- **Rate limiting**: if USPSA pushes back, add per-IP 1 req/s in the function and a Vercel KV cache with a 24h TTL.
+- **License / attribution**: `NOTICE` file crediting `uspsaprogress/progress` (ISC) for the ported math. File-level comment in `src/lib/rules.ts` linking to the source.
 
-## Open questions before execution
+---
 
-1. Vite SPA vs Next.js App Router? Plan currently assumes Vite + React SPA + a single Vercel Function.
-2. Is `recharts` acceptable, or do you prefer `visx` / `chart.js` / native SVG?
-3. Should historical fixtures be your own real records (with permission) or fully synthetic?
-4. Any branding (colors, logo) you want from the start, or defer to Phase 6?
-5. Is `practiscore-editor` public and meant to be cloned for scaffolding (it returned 404 when fetched anonymously)? If yes, share the actual structure / `package.json` and Phase 0 can mirror it instead of starting from `create-vite`.
+## Open questions to confirm before Sonnet starts
+
+1. **Stack confirmation**: keep Vite + React SPA + one Vercel Function (the plan as written), or switch to Next.js App Router (server components + built-in API routes)? Plan assumes Vite SPA.
+2. **Chart library**: Recharts. Alternatives: visx (more control, more code), Chart.js (less React-idiomatic). Plan assumes Recharts.
+3. **Fixtures**: synthesize three fully-fake records, or use your own real record (with permission) + two synthesized? Plan assumes three sanitized fixtures derived from real shape + fake identifiers.
+4. **Branch protection on `main`**: required PR review (1 or 2 reviewers)? Plan assumes 1.
+5. **Routing**: stick with search-params + `react-router-dom` `BrowserRouter`, or skip the dep and roll our own `useSearchParams` against `window.location`? Plan keeps `react-router-dom` because TanStack Query + URL state plays well with it.
+6. **`uspsaprogress` math discrepancy at n=6/7**: plan uses the doc-faithful rule (`n=6 → mean of 6`, `n=7 → best 6 of 7`) rather than uspsaprogress's `min(2, n-4)` heuristic. Confirm OK.
+7. **Polite User-Agent / ToS**: confirm we're comfortable hitting `uspsa.org` server-side from Vercel before going public. If concerns, we can add a private allow-list of member numbers initially.
