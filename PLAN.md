@@ -104,7 +104,29 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 
 ---
 
-## Phase 4 — Class-up insights
+## Phase 4 — Manual paste input
+
+**Deliverable**: a collapsed disclosure below the lookup form lets a user paste the classifier table copied from the USPSA classification page and renders the same table / chart / summary pipeline. The fetch path remains the primary, recommended experience.
+
+- [ ] Port `parseLine` / `parseTextInput` from `uspsaprogress/progress/src/parsing.ts` into `src/lib/textParser.ts`. Reimplement without `lodash` (native `Number.isNaN`, `Object` iteration).
+  - Keep the two regexes: classifier row (`date  classifierNumber  club  flag  percent  hitFactor`) and major-match row (`date  club  flag  percent - - Major Match`).
+  - Export `parsePastedTable(input: string, division: Division): { ok: true; classifiers: Classifier[]; parsedRows: number; skippedRows: number } | { ok: false; error: string }`.
+  - File-level comment attributes `uspsaprogress/progress` (ISC) and links to the upstream source. Mirror entry in `NOTICE`.
+- [ ] Unit tests in `src/lib/textParser.test.ts` covering both row formats, mixed flag values, decimal precision, header-line skipping, blank lines, and a real anonymized table dump.
+- [ ] `ManualPastePanel.tsx`:
+  - Disclosure widget (`<details>` or a custom accessible disclosure) **collapsed by default**, labeled e.g. "Paste classifier data manually".
+  - Inside: a short instructions block ("Open your USPSA classification page, copy the classifier table for one division, paste it below."), a division dropdown so the user can tag which division the paste belongs to, a `<textarea>`, and a "Process pasted data" button.
+  - On submit: call `parsePastedTable`; if `ok`, build a synthetic `ShooterRecord` with `source: "paste"`, `membershipType: "Unknown"`, name and member number left blank or filled from optional inline inputs, and write it to the same Zustand slice the fetch path uses. Show a small "parsed N rows, skipped M" summary.
+  - Allow appending pastes for additional divisions to the same in-memory record (state merges new divisions in).
+- [ ] Source badge in the header area: small chip showing "Fetched live" vs "Manual paste" so the rendered view is unambiguous.
+- [ ] Reset button: clears the pasted record and returns to the empty state.
+- [ ] Skip URL serialization of pasted records — pasted data is session-local. The "shareable URL" feature only applies to the fetch path.
+
+**Acceptance**: paste a real USPSA table (single division) into the textarea, click process, and see the same table + summary card + chart + class-up insights render as for a fetched record. Switching to a different division via a second paste appends to the same record without clobbering the first.
+
+---
+
+## Phase 5 — Class-up insights
 
 **Deliverable**: card showing, for N = 1..5 upcoming classifiers, the average % needed to class up.
 
@@ -117,11 +139,11 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 - [ ] Pre-classified case (<4 scores): card explains how many more are needed before the math applies.
 - [ ] Tests covering: A-class near M, B-class near A, fresh shooter with 0/2/4 scores, an already-GM shooter ("congratulations — top class").
 
-**Acceptance**: hand-calculated examples in tests pass; cards render sensibly for each fixture.
+**Acceptance**: hand-calculated examples in tests pass; cards render sensibly for each fixture. Manual-paste records produce the same insight numbers as fetched records for equivalent input.
 
 ---
 
-## Phase 5 — What-if simulator
+## Phase 6 — What-if simulator
 
 **Deliverable**: interactive panel projecting a new class % under user-defined scenarios.
 
@@ -137,7 +159,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 
 ---
 
-## Phase 6 — Polish
+## Phase 7 — Polish
 
 - [ ] Mobile breakpoints (lookup → summary → table → chart stacks vertically).
 - [ ] Dark mode toggle, default to system preference.

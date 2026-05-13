@@ -4,12 +4,13 @@ A web app that fetches a USPSA shooter's classification record by member number,
 
 ## Goals
 
-1. Look up a shooter's full classifier history from `uspsa.org` given just a member number.
+1. Look up a shooter's full classifier history from `uspsa.org` given just a member number (primary, automated path).
 2. Show records in a sortable table, filterable by division.
 3. Display the shooter's current classification + percentage for the selected division.
 4. Plot scores over time with a trend line / rolling-average line.
 5. Compute the average percentage required across the next N classifiers (N = 1..5) to reach the next class.
 6. Provide a "what-if" simulator: add hypothetical future scores and/or include/exclude current scores to see the resulting class %.
+7. Offer a secondary **manual-paste input**: a collapsed disclosure under the lookup form where a user can paste the classifier table from the USPSA page (mirroring `uspsaprogress/progress`'s UX). Parsed via regex into the same `ShooterRecord` shape and rendered through the same downstream pipeline. Used when automated fetch is blocked, when working from a saved copy, or for privacy.
 
 ## Prior art
 
@@ -99,6 +100,9 @@ All math (current %, trendline, class-up insights, what-if) runs client-side in 
     │   ├── projection.test.ts
     │   ├── parser.ts            # USPSA HTML -> ShooterRecord (server + tests)
     │   ├── parser.test.ts
+    │   ├── textParser.ts        # Pasted TSV -> Classifier[] (ported from uspsaprogress)
+    │   ├── textParser.test.ts
+    │   ├── urlState.ts          # useUrlState hook over URLSearchParams
     │   └── validation.ts        # Zod schemas
     ├── api/
     │   └── classification.ts    # Client wrapper around /api/classification
@@ -106,6 +110,7 @@ All math (current %, trendline, class-up insights, what-if) runs client-side in 
     │   └── useAppStore.ts       # Single Zustand store (lookup state + scenario)
     └── components/
         ├── LookupForm.tsx
+        ├── ManualPastePanel.tsx     # Collapsed disclosure; textarea + parse button
         ├── DivisionTabs.tsx
         ├── ClassifierTable.tsx
         ├── SummaryCard.tsx
@@ -147,10 +152,11 @@ interface Classifier {
 interface ShooterRecord {
   memberNumber: string;
   name: string;
-  membershipType: "Annual" | "ThreeYear" | "FiveYear" | "Lifetime";
+  membershipType: "Annual" | "ThreeYear" | "FiveYear" | "Lifetime" | "Unknown";
   currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number }>>;
   classifiers: Partial<Record<Division, Classifier[]>>;
   fetchedAt: string;       // ISO timestamp
+  source: "fetch" | "paste";
 }
 ```
 
