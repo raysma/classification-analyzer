@@ -28,7 +28,8 @@ const CLASS_MAP: Record<string, ClassLetter> = {
   U: 'U',
 }
 
-const VALID_FLAGS = new Set(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', 'N', ''])
+// B, C, D, G are retired as of April 2025 but still appear on historical rows
+const VALID_FLAGS = new Set(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', 'N', 'B', 'C', 'D', 'G', ''])
 
 const RESTRICTED_SELECTORS = ['.record-restricted', '#record-restricted']
 const RESTRICTED_TEXTS = ['not available for public viewing', 'record not viewable', 'private record']
