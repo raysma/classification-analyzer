@@ -76,6 +76,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(404).json({ error: 'record_not_viewable' })
       return
     }
+    if (parsed.error === 'parse_failed') {
+      const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
+      const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
+      const bodyMatch = /<body[^>]*>([\s\S]{0,500})/i.exec(html)
+      const bodySnippet = bodyMatch?.[1]?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) ?? html.slice(0, 300)
+      const responseSnippet = `Page title: "${pageTitle}"\nBody: ${bodySnippet}`
+      console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" body: "${bodySnippet}"`)
+      res.status(502).json({ error: 'parse_failed', responseSnippet })
+      return
+    }
     res.status(502).json({ error: parsed.error })
     return
   }
