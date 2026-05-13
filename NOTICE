@@ -1,0 +1,15 @@
+classification-analyzer
+Copyright 2025 raysma
+
+Third-party attributions:
+
+---
+
+uspsaprogress/progress (ISC License)
+https://github.com/uspsaprogress/progress
+
+The classification window math (RollingWindow, bestSixOfRecentEight, scoreNeededForTarget)
+ported into src/lib/rules.ts and src/lib/projection.ts is derived from this project.
+The lodash dependency was removed during port; native Array/Math equivalents used instead.
+
+---
