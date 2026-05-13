@@ -24,7 +24,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000,
       gcTime: 60 * 60 * 1000,
-      retry: 1,
+      retry: 0,
     },
   },
 })
@@ -116,7 +116,7 @@ function AppInner() {
 
   useUrlSync(memberNumber, selectedDivision)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isFetching, error } = useQuery({
     queryKey: ['classification', memberNumber],
     queryFn: async () => {
       const result = await fetchClassification(memberNumber)
@@ -195,7 +195,7 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <LookupForm onSubmit={handleLookup} isLoading={isLoading} />
+        <LookupForm onSubmit={handleLookup} isLoading={isFetching} />
         <ManualPastePanel />
 
         {warnings.length > 0 && (
