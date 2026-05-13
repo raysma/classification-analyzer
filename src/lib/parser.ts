@@ -102,6 +102,13 @@ export function parseClassificationHtml(html: string): ParseResult {
 
   // --- Member info ---
   const memberInfoEl = document.querySelector('.member-info')
+
+  // If neither member info nor division blocks are present, this isn't a USPSA classification page
+  // (e.g. a Cloudflare challenge page or any other non-classification response)
+  const hasDivisionBlocks = document.querySelectorAll('.division-block').length > 0
+  if (!memberInfoEl && !hasDivisionBlocks) {
+    return { ok: false, error: 'parse_failed' }
+  }
   const name = (memberInfoEl?.querySelector('h2')?.textContent ?? '').trim()
 
   let memberNumber = ''

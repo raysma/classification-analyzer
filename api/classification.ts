@@ -7,9 +7,7 @@ const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), ms),
-    ),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
   ])
 }
 
@@ -21,28 +19,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const url = `https://uspsa.org/classification/${encodeURIComponent(member)}`
+  const apiKey = process.env['SCRAPINGANT_API_KEY'] ?? ''
+  if (!apiKey) {
+    res.status(500).json({ error: 'scraping_not_configured' })
+    return
+  }
+
+  const targetUrl = `https://uspsa.org/classification/${encodeURIComponent(member)}`
+  const endpoint = new URL('https://api.scrapingant.com/v2/general')
+  endpoint.searchParams.set('url', targetUrl)
+  endpoint.searchParams.set('browser', 'true')
 
   let html: string
   try {
     const response = await withTimeout(
-      fetch(url, {
-        headers: {
-          'User-Agent':
-            'classification-analyzer/0.1 (+https://github.com/raysma/classification-analyzer)',
-          Accept: 'text/html',
-        },
+      fetch(endpoint.toString(), {
+        headers: { 'x-api-key': apiKey },
       }),
-      10_000,
+      60_000,
     )
 
-    if (response.status === 404) {
-      res.status(404).json({ error: 'member_not_found' })
+    if (!response.ok) {
+      let detail: string | undefined
+      try {
+        detail = (await response.text()).slice(0, 500)
+      } catch {
+        // ignore
+      }
+      console.error('[classification] ScrapingAnt error:', response.status, detail)
+      if (response.status === 401) {
+        res.status(500).json({ error: 'scraping_auth_failed' })
+        return
+      }
+      res.status(502).json({ error: 'fetch_failed', status: response.status })
       return
     }
 
-    if (!response.ok) {
-      res.status(502).json({ error: 'upstream_error', status: response.status })
+    const originStatus = parseInt(response.headers.get('ant-status-code') ?? '200', 10)
+    if (originStatus === 404) {
+      res.status(404).json({ error: 'member_not_found' })
       return
     }
 

@@ -107,9 +107,17 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'classification-analyzer-app',
+      version: 2,
       partialize: (state) => ({
         selectedDivision: state.selectedDivision,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<AppState>
+        return {
+          ...currentState,
+          selectedDivision: persisted.selectedDivision ?? currentState.selectedDivision,
+        }
+      },
     },
   ),
 )

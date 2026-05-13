@@ -31,7 +31,7 @@ const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'classification-query-cache',
+  key: 'classification-query-cache-v2',
 })
 
 function ErrorBanner({ error }: { error: unknown }) {
@@ -120,6 +120,7 @@ function AppInner() {
     setMemberNumber(member)
     setSelectedDivision(null)
     setWarnings([])
+    queryClient.invalidateQueries({ queryKey: ['classification', member] })
   }
 
   const divisionKeys = record ? (Object.keys(record.classifiers) as Division[]) : []
