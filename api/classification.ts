@@ -22,9 +22,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const endpoint = new URL('https://api.scrapingant.com/v2/general')
   endpoint.searchParams.set('url', targetUrl)
   endpoint.searchParams.set('browser', 'true')
+  // USPSA now shows a lookup form on GET; submitting it (POST same URL) returns the record.
+  // The form pre-fills from the URL, so we just need to submit it.
+  const jsSnippet = Buffer.from(
+    `(function(){` +
+    `var f=document.querySelector('form[action="?"]')||` +
+    `document.querySelector('input[name="number"]')?.closest('form');` +
+    `if(f)f.submit();` +
+    `})()`,
+  ).toString('base64')
+  endpoint.searchParams.set('js_snippet', jsSnippet)
+  endpoint.searchParams.set('wait_for_selector', '.classifier-table')
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 45_000)
+  const timeoutId = setTimeout(() => controller.abort(), 60_000)
 
   let html: string
   try {
