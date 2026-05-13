@@ -1,16 +1,8 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
 
-export const config = { runtime: 'edge' }
-
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
-
-function json(body: unknown, status: number, extraHeaders?: Record<string, string>): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...extraHeaders },
-  })
-}
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -19,12 +11,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ])
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  const { searchParams } = new URL(request.url)
-  const member = searchParams.get('member') ?? ''
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const member = typeof req.query['member'] === 'string' ? req.query['member'] : ''
 
   if (!member || !MEMBER_RE.test(member)) {
-    return json({ error: 'invalid_member_number' }, 400)
+    res.status(400).json({ error: 'invalid_member_number' })
+    return
   }
 
   const url = `https://uspsa.org/classification/${encodeURIComponent(member)}`
@@ -47,7 +39,8 @@ export default async function handler(request: Request): Promise<Response> {
     )
 
     if (response.status === 404) {
-      return json({ error: 'member_not_found' }, 404)
+      res.status(404).json({ error: 'member_not_found' })
+      return
     }
 
     if (!response.ok) {
@@ -63,45 +56,45 @@ export default async function handler(request: Request): Promise<Response> {
         response.statusText,
         responseSnippet?.slice(0, 300),
       )
-      return json(
-        {
-          error: 'upstream_error',
-          status: response.status,
-          statusText: response.statusText,
-          responseSnippet,
-        },
-        502,
-      )
+      res.status(502).json({
+        error: 'upstream_error',
+        status: response.status,
+        statusText: response.statusText,
+        responseSnippet,
+      })
+      return
     }
 
     html = await response.text()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (message === 'timeout') {
-      return json({ error: 'upstream_timeout' }, 504)
+      res.status(504).json({ error: 'upstream_timeout' })
+      return
     }
     console.error('[classification] fetch error:', message)
-    return json({ error: 'fetch_failed' }, 502)
+    res.status(502).json({ error: 'fetch_failed' })
+    return
   }
 
   const parsed = parseClassificationHtml(html)
 
   if (!parsed.ok) {
     if (parsed.error === 'record_not_viewable') {
-      return json({ error: 'record_not_viewable' }, 404)
+      res.status(404).json({ error: 'record_not_viewable' })
+      return
     }
-    return json({ error: parsed.error }, 502)
+    res.status(502).json({ error: parsed.error })
+    return
   }
 
   const validated = ShooterRecordSchema.safeParse(parsed.doc)
   if (!validated.success) {
     console.error('[classification] zod validation failed:', validated.error.message)
-    return json({ error: 'validation_failed', issues: validated.error.issues }, 502)
+    res.status(502).json({ error: 'validation_failed', issues: validated.error.issues })
+    return
   }
 
-  return json(
-    { ...validated.data, warnings: parsed.warnings },
-    200,
-    { 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
-  )
+  res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=3600')
+  res.status(200).json({ ...validated.data, warnings: parsed.warnings })
 }
