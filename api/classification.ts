@@ -29,10 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const endpoint = new URL('https://api.scrapingant.com/v2/general')
   endpoint.searchParams.set('url', targetUrl)
-  // Residential proxy + headless browser: needed to pass Cloudflare's IP reputation
-  // check and JS challenge. Costs 250 credits/request (40 free/month on free tier).
+  // browser=true: headless Chrome handles Cloudflare JS challenges (10 credits/req)
   endpoint.searchParams.set('browser', 'true')
-  endpoint.searchParams.set('proxy_type', 'residential')
 
   let html: string
   try {
