@@ -11,6 +11,7 @@ import ClassifierTable from './components/ClassifierTable'
 import SummaryCard from './components/SummaryCard'
 import ProgressChart from './components/ProgressChart'
 import ManualPastePanel from './components/ManualPastePanel'
+import ClassUpInsights from './components/ClassUpInsights'
 import { readUrlState, useUrlSync } from './lib/urlState'
 import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
 import type { Division } from './types/index'
@@ -215,6 +216,10 @@ function AppInner() {
 
             {selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
               <ProgressChart classifiers={activeClassifiers} history={history} />
+            )}
+
+            {selectedDivision && activeClassifiers.length > 0 && (
+              <ClassUpInsights classifiers={activeClassifiers} division={selectedDivision} />
             )}
 
             {selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
