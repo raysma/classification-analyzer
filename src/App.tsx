@@ -106,10 +106,9 @@ function AppInner() {
     dismissWarnings,
   } = useAppStore()
 
-  // Restore URL state on mount
+  // Restore division from URL on mount (member number pre-fills the form only — no auto-fetch)
   useEffect(() => {
-    const { memberNumber: urlMember, division: urlDiv } = readUrlState()
-    if (urlMember && !memberNumber) setMemberNumber(urlMember)
+    const { division: urlDiv } = readUrlState()
     if (urlDiv) setSelectedDivision(urlDiv)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -195,7 +194,7 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <LookupForm onSubmit={handleLookup} isLoading={isFetching} />
+        <LookupForm onSubmit={handleLookup} isLoading={isFetching} initialMember={readUrlState().memberNumber ?? ''} />
         <ManualPastePanel />
 
         {warnings.length > 0 && (

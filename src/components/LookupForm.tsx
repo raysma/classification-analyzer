@@ -1,16 +1,15 @@
 import { useState, type FormEvent } from 'react'
-import { useAppStore } from '../store/useAppStore'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 
 interface Props {
   onSubmit: (memberNumber: string) => void
   isLoading: boolean
+  initialMember?: string
 }
 
-export default function LookupForm({ onSubmit, isLoading }: Props) {
-  const storedMember = useAppStore((s) => s.memberNumber)
-  const [input, setInput] = useState(storedMember)
+export default function LookupForm({ onSubmit, isLoading, initialMember = '' }: Props) {
+  const [input, setInput] = useState(initialMember)
   const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(e: FormEvent) {
