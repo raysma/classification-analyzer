@@ -33,7 +33,7 @@ A web app that fetches a USPSA shooter's classification record by member number,
 | E2E                  | **Playwright** (one smoke flow)           | Browser-level safety net.                                           |
 | Package manager      | **pnpm** (pinned via `packageManager`)    | Deterministic; Vercel auto-detects.                                 |
 | Hosting              | **Vercel** (production + per-branch preview) | Free static hosting + serverless function for the proxy.        |
-| Serverless           | **Vercel Function (Node 20)** for one proxy endpoint | Unavoidable: USPSA has no public JSON + no permissive CORS. |
+| Serverless           | **Vercel Function (Node 24)** for one proxy endpoint | Unavoidable: USPSA has no public JSON + no permissive CORS. |
 
 **Guardrails:**
 - The proxy function (`api/classification.ts`) is the only server code in the repo. All other logic is client-side.
@@ -51,12 +51,12 @@ USPSA's site does not expose a public JSON API for member classification records
 ```
 [Browser SPA] ──> [Vercel Function /api/classification]
                        │
-                       ├─ validates member number (A|TY|FY|L + digits)
+                       ├─ validates member number (1–3 letter prefix + digits; e.g. A, TY, FY, L)
                        ├─ fetches https://uspsa.org/classification/<memberNumber>
                        ├─ parses HTML -> typed JSON (linkedom)
                        ├─ Zod-validates the parsed shape
                        ├─ caches by member number (CDN headers)
-                       └─ returns { shooter, divisions: { [div]: Classifier[] } }
+                       └─ returns { shooter, divisions: { [div]: Classifier[] }, warnings: string[] }
 ```
 
 All math (current %, trendline, class-up insights, what-if) runs client-side in `src/lib/`.
@@ -196,7 +196,15 @@ We also expose: optimistic ("one big score at 110%, rest at current avg"), pessi
 
 ### Next-class-to-chase
 
-Borrowed UX from `uspsaprogress`: use the **all-time-best classification reached** as the floor. If a shooter slipped from A to B, the insight card still tells them what it takes to get back to M (the next class above their best), not back to A.
+Borrowed UX from `uspsaprogress`: use the **all-time-best classification reached within the selected division** as the floor. If a shooter slipped from A to B in Carry Optics, the Carry Optics insight card still tells them what it takes to get back to M (the next class above their CO best), not back to A. The floor is per-division — we do not cross divisions here. USPSA's cross-division adjustment rule is already reflected in the `currentClasses` numbers we parse from the page, so no separate handling is needed.
+
+### Date handling
+
+Match dates from USPSA are local calendar dates with no timezone. Parse them as TZ-naive `YYYY-MM-DD` strings everywhere in `lib/` and only convert to `Date` at chart-rendering time (Recharts wants a number/Date on the X axis). Never feed `new Date("3/15/2025")` into the rules pipeline — locale parsing can shift a day across TZ boundaries and break the rolling window's ordering.
+
+### Defensive parsing
+
+USPSA's HTML can change. The parser returns `{ ok: true; doc: ShooterRecord; warnings: string[] }` on a partial success — warnings list non-fatal misses (e.g. missing classifier name, unrecognized flag character). The function only returns a hard error when *no* classifier rows parse at all. The UI renders a non-blocking banner when `warnings.length > 0`.
 
 ## Commands
 
@@ -259,6 +267,16 @@ Real USPSA records to validate parser + UI against. Sanitize / anonymize before 
 - Comparing two shooters head-to-head.
 - Pushing/syncing data to USPSA.
 - Mobile native apps.
+
+## Explicitly deferred / not building
+
+These have been considered and consciously skipped for v1. Don't add speculatively.
+
+- **Sentry / external error monitoring.** Vercel function logs are sufficient.
+- **Authenticated lookup of one's own private record.** Out of scope; users with restricted records see the "record not viewable" state.
+- **Code coverage thresholds in CI.** Test the right things, not a number.
+- **Server-side persistence of any kind** (database, Vercel KV, Upstash). Add only if USPSA rate-limits us.
+- **Cross-division class-up insights.** The next-class-to-chase floor is intentionally per-division.
 
 ## Risk register
 

@@ -11,8 +11,9 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 **Deliverable**: empty React app deploys to Vercel; `develop` and `main` branches both have live URLs; CI green on every PR.
 
 - [ ] `pnpm create vite@latest classification-analyzer -- --template react-ts` into a temp dir, then merge files into the repo root preserving the existing `.git/`, `README.md`, `CLAUDE.md`, `PLAN.md`.
-- [ ] Install runtime deps: `pnpm add zustand zod @tanstack/react-query recharts linkedom`.
+- [ ] Install runtime deps: `pnpm add zustand zod @tanstack/react-query @tanstack/react-query-persist-client @tanstack/query-sync-storage-persister recharts linkedom`.
   - `linkedom` is used by the Vercel Function and by parser tests in node.
+  - The two persist-client packages are wired up in Phase 2.
 - [ ] Install dev deps: `pnpm add -D tailwindcss postcss autoprefixer vitest @testing-library/react @testing-library/jest-dom jsdom @vitejs/plugin-react eslint prettier eslint-plugin-react-hooks eslint-plugin-jsx-a11y @typescript-eslint/parser @typescript-eslint/eslint-plugin @vercel/node @playwright/test`.
 - [ ] `pnpm dlx tailwindcss init -p`. Set `content` to `['./index.html', './src/**/*.{js,ts,jsx,tsx}']`. Enable `darkMode: 'class'`.
 - [ ] Replace `src/index.css` with `@tailwind base; @tailwind components; @tailwind utilities;`.
@@ -25,8 +26,11 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 - [ ] ESLint config covering TS, React Hooks, JSX a11y.
 - [ ] Prettier config (single quotes, no semis or with semis — pick one and pin).
 - [ ] Skeleton files: `src/main.tsx`, `src/App.tsx` rendering "Classification Analyzer", `src/types/index.ts` (empty), `src/lib/.gitkeep`, `src/store/.gitkeep`, `src/components/.gitkeep`.
+- [ ] Bootstrap `CHANGELOG.md` with an `## Unreleased` header.
+- [ ] Bootstrap `NOTICE` with a placeholder header — entries are filled in as code is ported (Phase 3 for `rules.ts`, Phase 4 for `textParser.ts`).
+- [ ] Create the `develop` branch from `main` and push it. Configure Vercel to treat `develop` as the stable preview environment.
 - [ ] GitHub Actions `ci.yml`: `pnpm install --frozen-lockfile → typecheck → lint → test → build`, run on PRs targeting `develop` and `main`.
-- [ ] Vercel: connect repo; set `develop` as the preview environment; enable preview deployments for all branches; protect `main` (require PR, require CI).
+- [ ] Vercel: connect repo; enable preview deployments for all branches; protect `main` (require PR, 1 reviewer, require CI).
 - [ ] Initial PR from `claude/uspsa-classifier-analyzer-xBXXd` → `develop` once scaffolding is in.
 - [ ] Replace top-level `README.md` with a short user-facing description + link to `PLAN.md` / `CLAUDE.md`.
 
@@ -39,7 +43,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 **Deliverable**: `GET /api/classification?member=A12345` returns typed JSON for any valid member number.
 
 - [ ] `api/classification.ts` Vercel Function:
-  - Validate `member` against `^(A|TY|FY|L)\d+$`; return 400 otherwise.
+  - Validate `member` against `^[A-Z]{1,3}\d+$` (loose; A/TY/FY/L are common but USPSA may use other prefixes — let the upstream surface "not found").
   - Fetch `https://uspsa.org/classification/<member>` with User-Agent `classification-analyzer/0.1 (+github.com/raysma/classification-analyzer)`.
   - Pass status through (404 → 404, etc).
   - Detect "private/restricted record" pages (the response is 200 with a marker rather than a record table) and return 404 with `{ error: "record_not_viewable" }`.
@@ -49,7 +53,9 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
   - Parse shooter header (name, membership type, member number).
   - Parse current-class blocks per division (letter + %).
   - Parse classifier tables per division: date, classifier code, name, hit factor, %, flag, source (club vs major match), match name when present.
-- [ ] `src/lib/validation.ts`: Zod schemas for `Classifier` and `ShooterRecord` matching the data shape in `CLAUDE.md`. Function returns `parseClassificationHtml(html: string): { ok: true; doc: ShooterRecord } | { ok: false; error: string }`.
+  - Parse dates as TZ-naive `YYYY-MM-DD` strings; never construct `Date` objects in `lib/`. Conversion to `Date` only happens at chart-rendering time.
+  - Return `{ ok: true; doc: ShooterRecord; warnings: string[] }` on partial success — warnings list non-fatal misses (missing classifier name, unrecognized flag, malformed row). Only return `{ ok: false }` when zero classifier rows parse from a record that should have some.
+- [ ] `src/lib/validation.ts`: Zod schemas for `Classifier` and `ShooterRecord` matching the data shape in `CLAUDE.md`. Function returns `parseClassificationHtml(html: string): { ok: true; doc: ShooterRecord; warnings: string[] } | { ok: false; error: string }`.
 - [ ] Capture sanitized HTML fixtures under `tests/fixtures/uspsa/`, derived from the reference records listed in `CLAUDE.md`:
   - `A154528.html` — annual, multi-division.
   - `A86278.html` — annual, second shape sample.
@@ -68,9 +74,11 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 
 **Deliverable**: user can enter a member number, see all classifiers grouped by division, pick a division.
 
-- [ ] `LookupForm.tsx`: input with format hint ("e.g. A12345 / TY53124 / L5727"); inline regex validation; submit triggers a query.
+- [ ] `LookupForm.tsx`: input with format hint ("e.g. A12345 / TY53124 / FY12345 / L5727"); inline validation against `^[A-Z]{1,3}\d+$`; submit triggers a query.
 - [ ] `src/store/useAppStore.ts` Zustand slice for lookup state: `{ memberNumber, selectedDivision, lastLookupAt }`. Selected division persisted to `localStorage` (small UI flag, allowed).
-- [ ] TanStack Query wrapping `/api/classification` with key `['classification', memberNumber]`; 5-minute stale time; visible loading + error states (404 → "no member found", 504 → "timed out, try again").
+- [ ] TanStack Query wrapping `/api/classification` with key `['classification', memberNumber]`; 5-minute stale time; visible loading + error states (404 → "no member found" or "record not viewable" depending on body, 504 → "timed out, try again").
+- [ ] Persist TanStack Query cache to `localStorage` via `@tanstack/query-sync-storage-persister` + `persistQueryClient` so reload doesn't re-fetch. Cap at 5MB; classification records are well under that. Persist only the `['classification', ...]` keys; do not persist scenario state.
+- [ ] Non-blocking warnings banner: when the API response includes `warnings.length > 0`, render a dismissible banner ("we couldn't parse 2 rows — display may be incomplete") above the table.
 - [ ] `DivisionTabs.tsx` showing only divisions present in the record; shows score count per division.
 - [ ] `ClassifierTable.tsx` for the selected division: columns date, classifier code, name, HF, %, flag, source; sortable; default newest-first; row tooltip explains flag meaning.
 - [ ] URL-state via `URLSearchParams`: `?m=A12345&div=CarryOptics`. Implement `src/lib/urlState.ts` with a `useUrlState` hook that reads `window.location.search` on mount and writes via `history.replaceState`. Store subscribes; no routing library needed.
@@ -108,11 +116,14 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 
 **Deliverable**: a collapsed disclosure below the lookup form lets a user paste the classifier table copied from the USPSA classification page and renders the same table / chart / summary pipeline. The fetch path remains the primary, recommended experience.
 
-- [ ] Port `parseLine` / `parseTextInput` from `uspsaprogress/progress/src/parsing.ts` into `src/lib/textParser.ts`. Reimplement without `lodash` (native `Number.isNaN`, `Object` iteration).
-  - Keep the two regexes: classifier row (`date  classifierNumber  club  flag  percent  hitFactor`) and major-match row (`date  club  flag  percent - - Major Match`).
-  - Export `parsePastedTable(input: string, division: Division): { ok: true; classifiers: Classifier[]; parsedRows: number; skippedRows: number } | { ok: false; error: string }`.
+- [ ] **First**: copy a real classifier table from one of the four reference records (e.g. `A154528`, one division) into the browser, then paste into a plain text file. Save anonymized as `tests/fixtures/paste/A154528-CO.txt` (one fixture per row-format variant — at minimum: club-only rows, and a record that includes a Major Match row). The `uspsaprogress` regex predates the April 2025 USPSA changes — do not trust it blindly; rebuild the regex from observed reality.
+- [ ] Implement `src/lib/textParser.ts`:
+  - Two regexes: classifier row (`date  classifierNumber  club  flag  percent  hitFactor`) and major-match row (`date  club  flag  percent - - Major Match`). Adjust to whatever the captured fixtures actually contain.
+  - Export `parsePastedTable(input: string, division: Division): { ok: true; classifiers: Classifier[]; parsedRows: number; skippedRows: number; warnings: string[] } | { ok: false; error: string }`.
+  - Parse dates as TZ-naive `YYYY-MM-DD` (same rule as the HTML parser).
+  - No `lodash`. Native `Number.isNaN`, `Object.entries`, etc.
   - File-level comment attributes `uspsaprogress/progress` (ISC) and links to the upstream source. Mirror entry in `NOTICE`.
-- [ ] Unit tests in `src/lib/textParser.test.ts` covering both row formats, mixed flag values, decimal precision, header-line skipping, blank lines, and a real anonymized table dump.
+- [ ] Unit tests in `src/lib/textParser.test.ts` exercising every captured fixture, plus synthesized edge cases (mixed flags, blank lines, header lines, malformed rows that should be skipped not crash).
 - [ ] `ManualPastePanel.tsx`:
   - Disclosure widget (`<details>` or a custom accessible disclosure) **collapsed by default**, labeled e.g. "Paste classifier data manually".
   - Inside: a short instructions block ("Open your USPSA classification page, copy the classifier table for one division, paste it below."), a division dropdown so the user can tag which division the paste belongs to, a `<textarea>`, and a "Process pasted data" button.
@@ -122,7 +133,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 - [ ] Reset button: clears the pasted record and returns to the empty state.
 - [ ] Skip URL serialization of pasted records — pasted data is session-local. The "shareable URL" feature only applies to the fetch path.
 
-**Acceptance**: paste a real USPSA table (single division) into the textarea, click process, and see the same table + summary card + chart + class-up insights render as for a fetched record. Switching to a different division via a second paste appends to the same record without clobbering the first.
+**Acceptance**: paste a real USPSA table (single division) into the textarea, click process, and see the same table + summary card + chart render as for a fetched record. Switching to a different division via a second paste appends to the same record without clobbering the first. (Class-up insights and what-if reuse the same data automatically once Phases 5 and 6 land.)
 
 ---
 
@@ -190,9 +201,16 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 ## Decisions on record
 
 - **Stack**: Vite + React SPA + one Vercel Function. No Next.js.
+- **Node version**: `24.x` (pinned via `engines.node`).
 - **Chart library**: Recharts. `ComposedChart` with `Scatter` (per-classifier points), `Line` (rolling average), and `ReferenceLine` (class thresholds).
 - **Routing**: none. URL state via `URLSearchParams` + `history.replaceState` in a small `useUrlState` hook.
 - **Classification window math**: doc-faithful per <https://uspsa.org/classification/about>. n=4 → mean of 4; n=5 → mean of 5; n=6 → mean of 6; n=7 → best 6 of 7; n≥8 → best 6 of recent 8.
+- **Member number validation**: loose, `^[A-Z]{1,3}\d+$`. Let the upstream surface "not found" for unknown prefixes.
+- **Next-class-to-chase floor**: per-division all-time-best within the selected division. We don't cross divisions; USPSA's cross-division adjustment is already in the `currentClasses` we parse.
+- **Dates**: parsed and stored as TZ-naive `YYYY-MM-DD` strings throughout `lib/`. Convert to `Date` only at chart-rendering time.
+- **Parser failure mode**: return `{ ok: true; doc; warnings: string[] }` on partial parse; UI shows a non-blocking banner. Hard error only when zero rows parse.
+- **TanStack Query persistence**: enabled in Phase 2 via `persistQueryClient` + localStorage, scoped to classification keys only.
+- **Manual paste fixtures**: capture real pastes from the reference records first, then build the regex to fit. Do not port the `uspsaprogress` regex unchanged.
 - **Branch protection on `main`**: 1 reviewer required.
 - **USPSA fetch from Vercel**: approved.
-- **Fixtures**: derived from the four real records listed in `CLAUDE.md` (A154528, A86278, L4898, A155617), anonymized before commit.
+- **HTML fixtures**: derived from the four real records listed in `CLAUDE.md` (A154528, A86278, L4898, A155617), anonymized before commit.
