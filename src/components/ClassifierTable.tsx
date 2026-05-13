@@ -14,6 +14,10 @@ const FLAG_DESCRIPTIONS: Record<Flag, string> = {
   P: 'Pending — will be counted after the next weekly processing run',
   Q: 'Excluded — disqualification',
   N: 'Excluded — did not finish',
+  B: 'Retired flag (pre-April 2025)',
+  C: 'Retired flag (pre-April 2025)',
+  D: 'Retired flag (pre-April 2025)',
+  G: 'Retired flag (pre-April 2025)',
   '': '',
 }
 
@@ -29,6 +33,10 @@ const FLAG_CLASSES: Record<Flag, string> = {
   Q: 'text-red-600 dark:text-red-400',
   N: 'text-red-600 dark:text-red-400',
   P: 'text-purple-600 dark:text-purple-400',
+  B: 'text-gray-400',
+  C: 'text-gray-400',
+  D: 'text-gray-400',
+  G: 'text-gray-400',
   '': '',
 }
 

@@ -14,7 +14,7 @@ export const DivisionSchema = z.enum([
 
 export const ClassLetterSchema = z.enum(['GM', 'M', 'A', 'B', 'C', 'D', 'U'])
 
-export const FlagSchema = z.enum(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', 'N', ''])
+export const FlagSchema = z.enum(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', 'N', 'B', 'C', 'D', 'G', ''])
 
 export const ClassifierSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

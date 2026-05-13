@@ -23,6 +23,10 @@ export type Flag =
   | 'P'
   | 'Q'
   | 'N'
+  | 'B'
+  | 'C'
+  | 'D'
+  | 'G'
   | ''
 
 export interface Classifier {
