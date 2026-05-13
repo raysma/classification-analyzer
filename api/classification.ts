@@ -47,7 +47,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!response.ok) {
-      res.status(502).json({ error: 'upstream_error', status: response.status })
+      let responseSnippet: string | undefined
+      try {
+        const body = await response.text()
+        responseSnippet = body.slice(0, 1000)
+      } catch {
+        // ignore
+      }
+      const debugHeaders: Record<string, string> = {}
+      for (const key of ['cf-ray', 'server', 'x-powered-by', 'content-type', 'x-cache']) {
+        const val = response.headers.get(key)
+        if (val) debugHeaders[key] = val
+      }
+      console.error(
+        '[classification] upstream error:',
+        response.status,
+        response.statusText,
+        debugHeaders,
+        responseSnippet?.slice(0, 300),
+      )
+      res.status(502).json({
+        error: 'upstream_error',
+        status: response.status,
+        statusText: response.statusText,
+        responseSnippet,
+      })
       return
     }
 
