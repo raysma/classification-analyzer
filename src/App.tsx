@@ -106,9 +106,10 @@ function AppInner() {
     dismissWarnings,
   } = useAppStore()
 
-  // Restore division from URL on mount (member number pre-fills the form only — no auto-fetch)
+  // Restore URL state on mount — auto-fetch if member number is in URL
   useEffect(() => {
-    const { division: urlDiv } = readUrlState()
+    const { memberNumber: urlMember, division: urlDiv } = readUrlState()
+    if (urlMember && !memberNumber) setMemberNumber(urlMember)
     if (urlDiv) setSelectedDivision(urlDiv)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -195,6 +196,16 @@ function AppInner() {
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         <LookupForm onSubmit={handleLookup} isLoading={isFetching} initialMember={readUrlState().memberNumber ?? ''} />
+
+        {isFetching && memberNumber && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Fetching {memberNumber} from USPSA — may take up to 30 seconds…
+          </p>
+        )}
         <ManualPastePanel />
 
         {warnings.length > 0 && (
