@@ -80,11 +80,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
       const totalLen = html.length
-      // Skip <head> — capture body content from the middle and end
-      const midStart = Math.max(0, Math.floor(totalLen / 2) - 1500)
-      const midSnippet = html.slice(midStart, midStart + 3000)
-      const tailSnippet = html.slice(-3000)
-      const responseSnippet = `Page title: "${pageTitle}" | total html length: ${totalLen}\n\n--- MIDDLE (offset ${midStart}) ---\n${midSnippet}\n\n--- TAIL (last 3000) ---\n${tailSnippet}`
+      // Find the body start to skip all the <head> CSS/JS boilerplate
+      const bodyIdx = html.search(/<body[\s>]/i)
+      const bodyStart = bodyIdx >= 0 ? bodyIdx : Math.floor(totalLen * 0.5)
+      // Also extract all <form> tags to find the lookup form action + field names
+      const formMatches: string[] = []
+      const formRe = /<form[\s\S]{0,1000}?<\/form>/gi
+      let fm: RegExpExecArray | null
+      while ((fm = formRe.exec(html)) !== null && formMatches.length < 5) {
+        formMatches.push(fm[0].slice(0, 400))
+      }
+      const responseSnippet = [
+        `Page title: "${pageTitle}" | total length: ${totalLen} | body offset: ${bodyStart}`,
+        `\n--- BODY START (${bodyStart}) to +3000 ---`,
+        html.slice(bodyStart, bodyStart + 3000),
+        `\n--- FORMS FOUND (${formMatches.length}) ---`,
+        ...formMatches.map((f, i) => `\nForm ${i + 1}:\n${f}`),
+      ].join('\n')
       console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
       return
