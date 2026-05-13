@@ -79,10 +79,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (parsed.error === 'parse_failed') {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
-      const bodyMatch = /<body[^>]*>([\s\S]{0,500})/i.exec(html)
-      const bodySnippet = bodyMatch?.[1]?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) ?? html.slice(0, 300)
-      const responseSnippet = `Page title: "${pageTitle}"\nBody: ${bodySnippet}`
-      console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" body: "${bodySnippet}"`)
+      // Capture raw HTML (with tags) so we can see class names / page structure
+      const rawSnippet = html.slice(0, 3000)
+      const responseSnippet = `Page title: "${pageTitle}"\n\nHTML (first 3000 chars):\n${rawSnippet}`
+      console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" html[:500]: "${html.slice(0, 500)}"`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
       return
     }
