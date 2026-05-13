@@ -1,0 +1,10 @@
+Date	Classifier	Classifier Name	Hit Factor	%	Flag	Club
+2/18/2024	18-10	El Presidente Classico	6.4410	68.74	Y	Palmetto Gun Club
+12/3/2023	09-02	Speed Option	5.9180	66.31	Y	Low Country Shooters
+10/7/2023	03-06	The Annoying Thing	5.6020	64.90	Y	Foothills Practical Shooters
+8/19/2023	99-11	Smoke and Hope	5.3340	63.18	Y	Palmetto Gun Club
+6/11/2023	18-03	Pendulum	5.0760	61.05	Y	Low Country Shooters
+4/15/2023	13-02	Accelerator	4.8830	59.22	F	Foothills Practical Shooters
+2/5/2023	07-01	Standards II	4.5110	56.77	E	Palmetto Gun Club
+11/20/2022	09-04	The Far Away	4.1020	51.34	E	Low Country Shooters
+9/17/2022	03-14	Where'd They Go	3.8460	47.18	E	Foothills Practical Shooters

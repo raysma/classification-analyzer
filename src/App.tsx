@@ -10,6 +10,7 @@ import DivisionTabs from './components/DivisionTabs'
 import ClassifierTable from './components/ClassifierTable'
 import SummaryCard from './components/SummaryCard'
 import ProgressChart from './components/ProgressChart'
+import ManualPastePanel from './components/ManualPastePanel'
 import { readUrlState, useUrlSync } from './lib/urlState'
 import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
 import type { Division } from './types/index'
@@ -70,6 +71,7 @@ function AppInner() {
     memberNumber,
     selectedDivision,
     warnings,
+    pastedRecord,
     setMemberNumber,
     setSelectedDivision,
     setWarnings,
@@ -97,7 +99,8 @@ function AppInner() {
     staleTime: 5 * 60 * 1000,
   })
 
-  const record = data?.record
+  // Fetched record takes priority over pasted record
+  const record = data?.record ?? pastedRecord ?? null
 
   // Auto-select first division when data arrives
   useEffect(() => {
@@ -150,6 +153,7 @@ function AppInner() {
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         <LookupForm onSubmit={handleLookup} isLoading={isLoading} />
+        <ManualPastePanel />
 
         {warnings.length > 0 && (
           <div
