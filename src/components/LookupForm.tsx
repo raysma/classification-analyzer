@@ -37,7 +37,7 @@ export default function LookupForm({ onSubmit, isLoading, initialMember = '' }: 
             setInput(e.target.value.toUpperCase())
             setError(null)
           }}
-          placeholder="e.g. A12345 / TY53124 / FY12345 / L5727"
+          placeholder="e.g. A69420"
           className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-describedby={error ? 'member-error' : undefined}
           disabled={isLoading}

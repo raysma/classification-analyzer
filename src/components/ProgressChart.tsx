@@ -159,6 +159,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
             <Scatter
               name="Classifiers"
               data={scatterData}
+              dataKey="y"
               shape={(props: unknown) => {
                 const { cx, cy, fill } = props as { cx: number; cy: number; fill: string }
                 return (
