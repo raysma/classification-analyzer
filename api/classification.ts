@@ -84,21 +84,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const snippets: string[] = [
         `Page title: "${pageTitle}" | total length: ${totalLen}`,
       ]
-      // Show 5000 chars starting from "Classifier Scores" heading — that's where the tables are
+
+      // Test the exact selectors the new parser relies on
+      try {
+        const { parse: parseHtml } = await import('node-html-parser')
+        const doc = parseHtml(html)
+        const divLinks = doc.querySelectorAll('a.divisionClick')
+        const memberThs = doc.querySelectorAll('th[scope="row"]')
+        const firstDivLink = divLinks[0]
+        snippets.push(
+          `\n--- DOM SELECTOR RESULTS ---` +
+          `\na.divisionClick count: ${divLinks.length}` +
+          `\nth[scope="row"] count: ${memberThs.length}` +
+          (firstDivLink ? `\nfirst divisionClick data-division="${firstDivLink.getAttribute('data-division')}"` : '')
+        )
+      } catch (e) {
+        snippets.push(`\n--- DOM parse error: ${e} ---`)
+      }
+
+      // Show 3000 chars starting from "Classifier Scores"
       const classifierScoresIdx = html.toLowerCase().indexOf('classifier scores')
       if (classifierScoresIdx >= 0) {
-        snippets.push(`\n--- "Classifier Scores" found at offset ${classifierScoresIdx} ---\n${html.slice(classifierScoresIdx, classifierScoresIdx + 5000)}`)
+        snippets.push(`\n--- "Classifier Scores" at offset ${classifierScoresIdx} ---\n${html.slice(classifierScoresIdx, classifierScoresIdx + 3000)}`)
       } else {
         snippets.push('\n--- "Classifier Scores" NOT FOUND ---')
       }
-      // Show context around first *-dropDown id to understand division wrapper structure
-      const dropDownIdx = html.toLowerCase().indexOf('-dropdown')
-      if (dropDownIdx >= 0) {
-        const start = Math.max(0, dropDownIdx - 300)
-        snippets.push(`\n--- first "-dropDown" at offset ${dropDownIdx} ---\n${html.slice(start, dropDownIdx + 1000)}`)
-      } else {
-        snippets.push('\n--- "-dropDown" NOT FOUND ---')
-      }
+
       const responseSnippet = snippets.join('\n')
       console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
