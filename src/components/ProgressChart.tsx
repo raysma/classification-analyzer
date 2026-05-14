@@ -59,6 +59,14 @@ function formatDate(val: number): string {
   return `${month} '${year}`
 }
 
+function formatFullDate(val: number): string {
+  const d = new Date(val)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const yy = d.getFullYear().toString().slice(2)
+  return `${mm}/${dd}/${yy}`
+}
+
 interface ScoreDatum {
   x: number
   pct: number
@@ -133,7 +141,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
             lineHeight: 1.6,
           }}
         >
-          <p style={{ fontWeight: 600, marginBottom: 2 }}>{formatDate(label as number)}</p>
+          <p style={{ fontWeight: 600, marginBottom: 2 }}>{formatFullDate(label as number)}</p>
           {allOnDate.map((score) => (
             <p key={score.code} style={{ color: SCORE_POINT_COLORS[classFor(score.pct)] }}>
               {score.code}: {score.pct.toFixed(2)}%
