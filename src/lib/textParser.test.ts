@@ -121,4 +121,54 @@ describe('parsePastedTable', () => {
       expect(flags).toContain('Y')
     })
   })
+
+  describe('new-format-CO.txt — 8-column USPSA 2025+ format', () => {
+    it('parses all rows', () => {
+      const result = parsePastedTable(fixture('new-format-CO.txt'), 'CarryOptics')
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.parsedRows).toBe(10)
+      expect(result.skippedRows).toBe(0)
+    })
+
+    it('expands 2-digit years to 4-digit', () => {
+      const result = parsePastedTable(fixture('new-format-CO.txt'), 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      expect(result.classifiers.every((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.date))).toBe(true)
+      expect(result.classifiers[0]?.date).toBe('2026-03-15')
+    })
+
+    it('parses major match row', () => {
+      const result = parsePastedTable(fixture('new-format-CO.txt'), 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      const major = result.classifiers.filter((c) => c.source === 'majorMatch')
+      expect(major.length).toBe(1)
+      expect(major[0]?.classifierCode).toBe('MAJOR')
+      expect(major[0]?.hitFactor).toBeUndefined()
+      expect(major[0]?.matchName).toContain('Championship')
+    })
+
+    it('parses hit factors for club rows', () => {
+      const result = parsePastedTable(fixture('new-format-CO.txt'), 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      const club = result.classifiers.filter((c) => c.source === 'club')
+      expect(club.every((c) => c.hitFactor !== undefined)).toBe(true)
+    })
+
+    it('parses flags', () => {
+      const result = parsePastedTable(fixture('new-format-CO.txt'), 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      const flags = new Set(result.classifiers.map((c) => c.flag))
+      expect(flags.has('Y')).toBe(true)
+      expect(flags.has('F')).toBe(true)
+      expect(flags.has('E')).toBe(true)
+    })
+
+    it('skips new-format header row', () => {
+      const result = parsePastedTable(fixture('new-format-CO.txt'), 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      // No classifier with code "Number" (the header value)
+      expect(result.classifiers.every((c) => c.classifierCode !== 'Number')).toBe(true)
+    })
+  })
 })
