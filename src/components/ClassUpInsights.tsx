@@ -57,7 +57,7 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
               +{k}<span className="hidden sm:inline"> classifier{k !== 1 ? 's' : ''}</span>
             </p>
             {feasible && minAvgPercent !== null ? (
-              <p className="text-sm sm:text-lg font-bold tabular-nums">{minAvgPercent.toFixed(1)}%</p>
+              <p className="text-sm sm:text-lg font-bold tabular-nums">{minAvgPercent.toFixed(2)}%</p>
             ) : (
               <p className="text-sm sm:text-lg font-bold">—</p>
             )}

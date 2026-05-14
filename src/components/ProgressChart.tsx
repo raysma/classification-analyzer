@@ -150,12 +150,12 @@ export default function ProgressChart({ classifiers, history }: Props) {
           <p style={{ fontWeight: 600, marginBottom: 2 }}>{formatFullDate(label as number)}</p>
           {allOnDate.map((score) => (
             <p key={score.code} style={{ color: SCORE_POINT_COLORS[classFor(score.pct)] }}>
-              {score.code}: {score.pct.toFixed(2)}%
+              {score.code}: {score.pct.toFixed(4)}%
             </p>
           ))}
           {avgItem && (
             <p style={{ color: '#0ea5e9' }}>
-              Classification: {Number(avgItem.value).toFixed(2)}%
+              Classification: {Number(avgItem.value).toFixed(4)}%
             </p>
           )}
         </div>

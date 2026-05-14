@@ -70,17 +70,17 @@ export default function SummaryCard({
             {letter}
           </span>
           <div>
-            <p className="text-3xl font-bold tabular-nums">{displayPercent.toFixed(2)}%</p>
+            <p className="text-3xl font-bold tabular-nums">{displayPercent.toFixed(4)}%</p>
             {gap !== null && gap > 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {gap.toFixed(2)}% to next threshold ({threshold}%)
+                {gap.toFixed(4)}% to next threshold ({threshold}%)
               </p>
             )}
             {showProjected && projectedPercent !== null && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Projected:{' '}
                 <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                  {projectedPercent.toFixed(2)}%
+                  {projectedPercent.toFixed(4)}%
                 </span>{' '}
                 <span className="text-xs">(next stats run)</span>
               </p>
@@ -89,7 +89,7 @@ export default function SummaryCard({
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 All-time high:{' '}
                 <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                  {displayHighPercent.toFixed(2)}%
+                  {displayHighPercent.toFixed(4)}%
                 </span>
                 {isEstimatedHigh && <span className="text-xs"> (estimated)</span>}
               </p>
