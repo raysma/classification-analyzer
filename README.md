@@ -2,7 +2,7 @@
 
 A web app for USPSA competitors. Enter your member number to instantly see your full classifier history, track your classification percentage over time, and find out exactly what scores you need to reach the next class.
 
-**Live at**: classification.rmshooting.com  
+**Live at**: [classification.rmshooting.com](https://classification.rmshooting.com)  
 **GitHub**: [github.com/raysma/classification-analyzer](https://github.com/raysma/classification-analyzer)
 
 ## Features
