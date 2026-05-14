@@ -7,6 +7,7 @@ import type { ClassLetter } from '../types/index'
 interface Props {
   classifiers: ValidatedClassifier[]
   division: string
+  officialClass?: { letter: ClassLetter; percent: number; highPercent: number }
 }
 
 const TARGET_OPTIONS: ClassLetter[] = ['D', 'C', 'B', 'A', 'M', 'GM']
@@ -26,16 +27,21 @@ function colorForDown(pct: number | null, feasible: boolean): string {
   return 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200'
 }
 
-export default function ClassUpInsights({ classifiers, division }: Props) {
+export default function ClassUpInsights({ classifiers, division, officialClass }: Props) {
   const [selectedTarget, setSelectedTarget] = useState<ClassLetter | null>(null)
 
   const results = useMemo(
     () =>
       [1, 2, 3, 4, 5].map((k) => ({
         k,
-        ...requiredAverageForTarget(classifiers, k, selectedTarget ?? undefined),
+        ...requiredAverageForTarget(
+          classifiers,
+          k,
+          selectedTarget ?? undefined,
+          officialClass?.letter,
+        ),
       })),
-    [classifiers, selectedTarget],
+    [classifiers, selectedTarget, officialClass?.letter],
   )
 
   const first = results[0]

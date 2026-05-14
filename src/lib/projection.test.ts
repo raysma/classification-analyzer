@@ -212,3 +212,24 @@ describe('requiredAverageForTarget — target override (dropdown selection)', ()
     expect(result.feasible).toBe(false)
   })
 })
+
+describe('requiredAverageForTarget — currentClassOverride', () => {
+  it('USPSA-GM shooter whose history does not reach 95% still treats GM as current', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    // 8 scores at 90% — our rolling-window math says M (90), but if USPSA
+    // recorded them as GM via major-match promotion, the override wins.
+    const scores = buildScores([90, 90, 90, 90, 90, 90, 90, 90])
+
+    // Default (no override): our computed says M → picking M is maintain
+    const noOverride = requiredAverageForTarget(scores, 1, 'M')
+    expect(noOverride.direction).toBe('maintain')
+
+    // With override saying GM: picking M is now correctly direction='down'
+    const withOverride = requiredAverageForTarget(scores, 1, 'M', 'GM')
+    expect(withOverride.direction).toBe('down')
+
+    // And picking GM with override is the at-top maintain case
+    const pickGM = requiredAverageForTarget(scores, 1, 'GM', 'GM')
+    expect(pickGM.atTop).toBe(true)
+  })
+})

@@ -285,7 +285,13 @@ function AppInner() {
             )}
 
             {selectedDivision && activeClassifiers.length > 0 && (
-              <ClassUpInsights classifiers={activeClassifiers} division={selectedDivision} />
+              <ClassUpInsights
+                classifiers={activeClassifiers}
+                division={selectedDivision}
+                {...(record.currentClasses[selectedDivision]
+                  ? { officialClass: record.currentClasses[selectedDivision] }
+                  : {})}
+              />
             )}
 
             {selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (

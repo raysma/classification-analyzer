@@ -86,10 +86,21 @@ export function requiredAverageForTarget(
   scores: ValidatedClassifier[],
   k: number,
   targetOverride?: ClassLetter,
+  currentClassOverride?: ClassLetter,
 ): RequiredAverageResult {
-  const current = effectiveCurrentClass(scores)
+  // Use the explicit current-class override when provided (typically USPSA's
+  // authoritative letter from the parsed Classifications table). Falls back
+  // to our computed effective class for paste records or anything else.
+  const current =
+    currentClassOverride && currentClassOverride !== 'U'
+      ? currentClassOverride
+      : effectiveCurrentClass(scores)
   const history = getClassificationHistory(scores)
-  const officiallyClassifiedGM = allTimeBestClass(history) === 'GM'
+  // "Officially classified GM" requires either an explicit USPSA letter or a
+  // real GM-level snapshot in our computed history — NOT just trending GM
+  // with fewer than 4 scores.
+  const officiallyClassifiedGM =
+    currentClassOverride === 'GM' || allTimeBestClass(history) === 'GM'
 
   // Resolve target: explicit override wins, otherwise default to "next class up"
   // from the current effective class.
