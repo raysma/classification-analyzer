@@ -81,30 +81,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
       const totalLen = html.length
 
-      // Find interesting anchors in the HTML to show relevant context
-      const ANCHORS = ['member-info', 'division-block', 'classifier-table', 'current-class']
+      // Search for division names and table structures anywhere in the HTML
+      const DIVISION_ANCHORS = ['carry optics', 'open', 'production', 'limited', 'revolver', 'pcc', 'single stack', 'thead-inverse', 'shooter name', 'member number']
       const snippets: string[] = [
         `Page title: "${pageTitle}" | total length: ${totalLen}`,
       ]
-      for (const anchor of ANCHORS) {
+      for (const anchor of DIVISION_ANCHORS) {
         const idx = html.toLowerCase().indexOf(anchor)
         if (idx >= 0) {
-          const start = Math.max(0, idx - 100)
-          snippets.push(`\n--- "${anchor}" found at offset ${idx} ---\n${html.slice(start, idx + 600)}`)
-        } else {
-          snippets.push(`\n--- "${anchor}" NOT FOUND IN PAGE ---`)
+          const start = Math.max(0, idx - 200)
+          snippets.push(`\n--- "${anchor}" found at offset ${idx} ---\n${html.slice(start, idx + 800)}`)
+          break // just find the first one to identify where content starts
         }
       }
-      // Show 3000 chars from the midpoint of the page (skips navigation, hits content)
-      const midIdx = Math.floor(totalLen * 0.5)
-      snippets.push(`\n--- MIDPOINT (offset ${midIdx}) ---\n${html.slice(midIdx, midIdx + 3000)}`)
-      // Also look for the member form and show what follows it
-      const formIdx = html.toLowerCase().indexOf('name="number"')
-      if (formIdx >= 0) {
-        const afterForm = html.indexOf('</form>', formIdx)
-        const showFrom = afterForm >= 0 ? afterForm : formIdx + 200
-        snippets.push(`\n--- AFTER MEMBER FORM (offset ${showFrom}) ---\n${html.slice(showFrom, showFrom + 3000)}`)
-      }
+      // Show the last 8000 chars of the page — classification tables are typically near the end
+      snippets.push(`\n--- PAGE END (last 8000 chars, offset ${totalLen - 8000}) ---\n${html.slice(Math.max(0, totalLen - 8000))}`)
       const responseSnippet = snippets.join('\n')
       console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
