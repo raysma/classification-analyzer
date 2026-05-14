@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   ComposedChart,
   Line,
@@ -71,6 +71,7 @@ interface Props {
 
 export default function ProgressChart({ classifiers, history }: Props) {
   const [showAll, setShowAll] = useState(false)
+  const [activeX, setActiveX] = useState<number | null>(null)
   const isDark = useIsDark()
 
   const gridColor = isDark ? '#374151' : '#e5e7eb'
@@ -90,6 +91,10 @@ export default function ProgressChart({ classifiers, history }: Props) {
       cname: c.classifierName,
     }))
 
+  // Ref so renderTooltip always reads the latest scoreData without needing it in deps
+  const scoreDataRef = useRef(scoreData)
+  scoreDataRef.current = scoreData
+
   const lineData = history.map((h) => ({
     x: dateToNum(h.date),
     avg: h.percent,
@@ -105,8 +110,13 @@ export default function ProgressChart({ classifiers, history }: Props) {
       const { active, payload, label } = props
       if (!active || !payload?.length) return null
 
-      const scoreItem = payload.find((p) => p.dataKey === 'pct')
       const avgItem = payload.find((p) => p.dataKey === 'avg')
+
+      // Show ALL classifiers on the active date, not just the one Recharts picked
+      const activeTimestamp = typeof label === 'number' ? label : null
+      const allOnDate = activeTimestamp !== null
+        ? scoreDataRef.current.filter((d) => d.x === activeTimestamp)
+        : []
 
       return (
         <div
@@ -122,11 +132,11 @@ export default function ProgressChart({ classifiers, history }: Props) {
           }}
         >
           <p style={{ fontWeight: 600, marginBottom: 2 }}>{formatDate(label as number)}</p>
-          {scoreItem && (
-            <p style={{ color: SCORE_POINT_COLORS[classFor(Number(scoreItem.value))] }}>
-              {(scoreItem.payload as ScoreDatum).code}: {Number(scoreItem.value).toFixed(2)}%
+          {allOnDate.map((score) => (
+            <p key={score.code} style={{ color: SCORE_POINT_COLORS[classFor(score.pct)] }}>
+              {score.code}: {score.pct.toFixed(2)}%
             </p>
-          )}
+          ))}
           {avgItem && (
             <p style={{ color: '#0ea5e9' }}>
               Classification: {Number(avgItem.value).toFixed(2)}%
@@ -155,7 +165,17 @@ export default function ProgressChart({ classifiers, history }: Props) {
 
       <div className="h-72 w-full rounded-md border border-gray-200 dark:border-gray-700 p-2">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart margin={{ top: 8, right: 48, bottom: 8, left: 0 }}>
+          <ComposedChart
+            margin={{ top: 8, right: 48, bottom: 8, left: 0 }}
+            onMouseMove={(state: { isTooltipActive?: boolean; activeLabel?: number | string }) => {
+              if (state.isTooltipActive && typeof state.activeLabel === 'number') {
+                setActiveX(state.activeLabel)
+              } else {
+                setActiveX(null)
+              }
+            }}
+            onMouseLeave={() => setActiveX(null)}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             <XAxis
               dataKey="x"
@@ -199,24 +219,21 @@ export default function ProgressChart({ classifiers, history }: Props) {
               dot={(props: unknown) => {
                 const p = props as { cx: number; cy: number; payload: ScoreDatum }
                 const color = SCORE_POINT_COLORS[classFor(p.payload.pct)]
-                return <circle key={`dot-${p.payload.x}`} cx={p.cx} cy={p.cy} r={5} fill={color} opacity={0.85} />
-              }}
-              activeDot={(props: unknown) => {
-                const p = props as { cx: number; cy: number; payload: ScoreDatum }
-                const color = SCORE_POINT_COLORS[classFor(p.payload.pct)]
+                const isActive = p.payload.x === activeX
                 return (
                   <circle
-                    key={`adot-${p.payload.x}`}
+                    key={`dot-${p.payload.x}-${p.payload.code}`}
                     cx={p.cx}
                     cy={p.cy}
-                    r={7}
+                    r={isActive ? 7 : 5}
                     fill={color}
-                    stroke="white"
-                    strokeWidth={2}
-                    opacity={0.95}
+                    stroke={isActive ? 'white' : 'none'}
+                    strokeWidth={isActive ? 2 : 0}
+                    opacity={isActive ? 0.95 : 0.85}
                   />
                 )
               }}
+              activeDot={false}
             />
 
             <Line

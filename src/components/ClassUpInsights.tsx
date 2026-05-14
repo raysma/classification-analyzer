@@ -56,7 +56,7 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
             {feasible && minAvgPercent !== null ? (
               <p className="text-lg font-bold tabular-nums">{minAvgPercent.toFixed(1)}%</p>
             ) : (
-              <p className="text-sm font-medium">Not feasible</p>
+              <p className="text-lg font-bold">—</p>
             )}
           </div>
         ))}
