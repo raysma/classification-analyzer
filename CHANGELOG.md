@@ -9,7 +9,6 @@
 - **Color-coded scores**: percent column in the classifier table is now colored by classification bracket (GM/M/A/B/C/D) matching the chart threshold lines.
 - **All-time best**: the classification summary card now shows your all-time highest classification percentage alongside your current one.
 - **Updated USPSA parser**: automatic lookup updated for USPSA's redesigned classification page, including support for the new 8-column table layout and 2-digit year dates.
-- **Division name formatting**: division names now display with proper spacing (Carry Optics, Single Stack, Limited 10) throughout the app.
 
 ## 2026-05-13
 
