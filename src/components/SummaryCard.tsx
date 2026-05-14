@@ -44,6 +44,14 @@ export default function SummaryCard({ currentPercent, windowSize, division, allT
                 {gap.toFixed(2)}% to {classFor(threshold!)} ({threshold}% threshold)
               </p>
             )}
+            {allTimeHighPercent !== undefined && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                All-time high:{' '}
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {allTimeHighPercent.toFixed(2)}%
+                </span>
+              </p>
+            )}
             {letter === 'GM' && (
               <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
                 Grand Master — top class!
@@ -62,12 +70,6 @@ export default function SummaryCard({ currentPercent, windowSize, division, allT
       <p className="text-xs text-gray-400 dark:text-gray-500">
         {windowSize} score{windowSize !== 1 ? 's' : ''} in window
       </p>
-
-      {allTimeHighPercent !== undefined && (
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          All-time best: <span className="font-medium text-gray-600 dark:text-gray-300">{allTimeHighPercent.toFixed(2)}%</span>
-        </p>
-      )}
     </div>
   )
 }

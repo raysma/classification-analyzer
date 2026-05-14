@@ -36,7 +36,10 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
   )
 
   // Display order: hypotheticals first (newest), then real scores newest-to-oldest
-  const displayScores = [...scenarioWindowScores].sort((a, b) => b.date.localeCompare(a.date))
+  const displayScores = [...scenarioWindowScores].sort((a, b) => {
+    const dateCmp = b.date.localeCompare(a.date)
+    return dateCmp !== 0 ? dateCmp : b.percent - a.percent
+  })
 
   const hasChanges = hypotheticalScores.length > 0
 

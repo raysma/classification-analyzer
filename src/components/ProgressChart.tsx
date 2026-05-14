@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   ComposedChart,
   Scatter,
+  Cell,
   Line,
   ReferenceLine,
   XAxis,
@@ -12,7 +13,8 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { ValidatedClassifier } from '../lib/validation'
-import type { ClassificationSnapshot } from '../types/index'
+import type { ClassificationSnapshot, ClassLetter } from '../types/index'
+import { classFor } from '../lib/rules'
 
 const CLASS_BANDS = [
   { label: 'GM', threshold: 95, color: '#eab308' },
@@ -22,6 +24,16 @@ const CLASS_BANDS = [
   { label: 'C', threshold: 40, color: '#f97316' },
   { label: 'D', threshold: 2, color: '#ef4444' },
 ]
+
+const SCORE_POINT_COLORS: Record<ClassLetter, string> = {
+  GM: '#eab308',
+  M: '#a855f7',
+  A: '#3b82f6',
+  B: '#22c55e',
+  C: '#f97316',
+  D: '#ef4444',
+  U: '#9ca3af',
+}
 
 function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(() =>
@@ -127,9 +139,10 @@ export default function ProgressChart({ classifiers, history }: Props) {
                 borderColor: tooltipBorder,
                 color: tooltipColor,
                 fontFamily: 'inherit',
+                fontSize: 12,
               }}
-              itemStyle={{ color: tooltipColor }}
-              labelStyle={{ color: tooltipColor }}
+              itemStyle={{ color: tooltipColor, fontFamily: 'inherit', fontSize: 12 }}
+              labelStyle={{ color: tooltipColor, fontFamily: 'inherit', fontSize: 12 }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
 
@@ -146,11 +159,20 @@ export default function ProgressChart({ classifiers, history }: Props) {
             <Scatter
               name="Classifiers"
               data={scatterData}
-              dataKey="y"
-              fill="#6366f1"
-              opacity={0.7}
-              shape="circle"
-            />
+              shape={(props: unknown) => {
+                const { cx, cy, fill } = props as { cx: number; cy: number; fill: string }
+                return (
+                  <g>
+                    <circle cx={cx} cy={cy} r={10} fill="transparent" />
+                    <circle cx={cx} cy={cy} r={5} fill={fill} opacity={0.85} />
+                  </g>
+                )
+              }}
+            >
+              {scatterData.map((entry, i) => (
+                <Cell key={i} fill={SCORE_POINT_COLORS[classFor(entry.y)]} />
+              ))}
+            </Scatter>
 
             <Line
               name="Classification %"

@@ -309,7 +309,7 @@ function AppInner() {
             <button
               type="button"
               onClick={() => setShowChangelog(true)}
-              className="hover:text-gray-600 dark:hover:text-gray-300 underline underline-offset-2"
+              className="hover:text-gray-600 dark:hover:text-gray-300"
             >
               What&apos;s new
             </button>
