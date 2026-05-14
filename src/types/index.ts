@@ -44,7 +44,7 @@ export interface ShooterRecord {
   memberNumber: string
   name: string
   membershipType: 'Annual' | 'ThreeYear' | 'FiveYear' | 'Lifetime' | 'Unknown'
-  currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number }>>
+  currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number; highPercent: number }>>
   classifiers: Partial<Record<Division, Classifier[]>>
   fetchedAt: string
   source: 'fetch' | 'paste'

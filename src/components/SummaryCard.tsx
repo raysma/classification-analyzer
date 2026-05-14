@@ -17,7 +17,7 @@ interface Props {
   windowSize: number
   division: string
   allTimeHighPercent?: number
-  officialClass?: { letter: ClassLetter; percent: number }
+  officialClass?: { letter: ClassLetter; percent: number; highPercent: number }
   crossDivisionFloor?: ClassLetter | null
 }
 
@@ -40,6 +40,11 @@ export default function SummaryCard({
 
   const officialPercent = officialClass?.percent ?? null
   const displayPercent = officialPercent ?? projectedPercent
+
+  // USPSA's recorded high wins over our computed estimate. When officialClass
+  // is absent (manual paste), we fall back to the locally-computed high.
+  const displayHighPercent = officialClass?.highPercent ?? allTimeHighPercent
+  const isEstimatedHigh = officialClass === undefined
 
   const threshold = nextClassThreshold(letter)
   const gap =
@@ -80,12 +85,13 @@ export default function SummaryCard({
                 <span className="text-xs">(next stats run)</span>
               </p>
             )}
-            {allTimeHighPercent !== undefined && (
+            {displayHighPercent !== undefined && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 All-time high:{' '}
                 <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                  {allTimeHighPercent.toFixed(2)}%
+                  {displayHighPercent.toFixed(2)}%
                 </span>
+                {isEstimatedHigh && <span className="text-xs"> (estimated)</span>}
               </p>
             )}
             {letter === 'GM' && (
