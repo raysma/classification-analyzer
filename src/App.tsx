@@ -314,6 +314,15 @@ function AppInner() {
             </button>
             <span aria-hidden="true">·</span>
             <span>Crafted with love for the shooting community.</span>
+            <span aria-hidden="true">·</span>
+            <a
+              href="https://github.com/raysma/classification-analyzer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              GitHub
+            </a>
           </div>
         </footer>
         {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
