@@ -8,6 +8,8 @@ import {
   getClassificationHistory,
   allTimeBestClass,
   nextClassThreshold,
+  stickyClassFor,
+  crossDivisionFloorClass,
 } from './rules'
 import type { ValidatedClassifier } from './validation'
 
@@ -37,6 +39,12 @@ describe('isInvalidFlag', () => {
     expect(isInvalidFlag('I')).toBe(true)
     expect(isInvalidFlag('Q')).toBe(true)
     expect(isInvalidFlag('N')).toBe(true)
+  })
+  it('excludes retired flags B, C, D, G (April 2025)', () => {
+    expect(isInvalidFlag('B')).toBe(true)
+    expect(isInvalidFlag('C')).toBe(true)
+    expect(isInvalidFlag('D')).toBe(true)
+    expect(isInvalidFlag('G')).toBe(true)
   })
   it('includes valid flags', () => {
     for (const f of ['Y', 'F', 'E', 'M', 'S', 'A', 'X', 'P', ''] as const) {
@@ -196,5 +204,78 @@ describe('end-to-end: A154528 Open fixture', () => {
       expect(pct).toBeGreaterThan(0)
       expect(pct).toBeLessThanOrEqual(110)
     }
+  })
+})
+
+describe('stickyClassFor — within-division sticky class', () => {
+  it('returns U when no scores', () => {
+    expect(stickyClassFor(null, null)).toBe('U')
+    expect(stickyClassFor(null, undefined)).toBe('U')
+  })
+
+  it('falls back to current % when no high', () => {
+    expect(stickyClassFor(78, null)).toBe('A')
+    expect(stickyClassFor(78, undefined)).toBe('A')
+  })
+
+  it('uses all-time high when current is lower (sticky)', () => {
+    // Reached GM (95), now at M (88) — should still show GM
+    expect(stickyClassFor(88, 95)).toBe('GM')
+  })
+
+  it('uses current when current is higher than recorded high', () => {
+    expect(stickyClassFor(86, 70)).toBe('M')
+  })
+
+  it('returns GM at the boundary', () => {
+    expect(stickyClassFor(80, 95)).toBe('GM')
+    expect(stickyClassFor(80, 94.99)).toBe('M')
+  })
+})
+
+describe('crossDivisionFloorClass — USPSA one-letter-below rule', () => {
+  function buildScores(percents: number[], code = '99-11'): ValidatedClassifier[] {
+    return percents.map((p, i) => mkScore(p, `2024-${String(i + 1).padStart(2, '0')}-01`, `${code}-${i}`))
+  }
+
+  it('returns null when no other division has ≥4 valid scores', () => {
+    const record = { CarryOptics: buildScores([60, 65, 70, 75]) }
+    expect(crossDivisionFloorClass(record, 'CarryOptics')).toBeNull()
+  })
+
+  it('floor is M when another division reached GM', () => {
+    const record = {
+      CarryOptics: buildScores([95, 96, 97, 98, 99, 96], 'co'),
+      Limited: buildScores([60, 65, 70, 75], 'lim'),
+    }
+    expect(crossDivisionFloorClass(record, 'Limited')).toBe('M')
+  })
+
+  it('floor is A when another division reached M', () => {
+    const record = {
+      CarryOptics: buildScores([85, 86, 87, 88, 87, 86], 'co'),
+      Limited: buildScores([60, 60, 60, 60], 'lim'),
+    }
+    expect(crossDivisionFloorClass(record, 'Limited')).toBe('A')
+  })
+
+  it('only considers OTHER divisions for the floor', () => {
+    // CO is GM at 95+%, Limited is in B class (avg ~67%).
+    // When asking the floor for CO, we look at Limited only → floor = C (one below B).
+    const record = {
+      CarryOptics: buildScores([95, 96, 97, 98, 99, 96], 'co'),
+      Limited: buildScores([60, 65, 70, 75], 'lim'),
+    }
+    expect(crossDivisionFloorClass(record, 'CarryOptics')).toBe('C')
+  })
+
+  it('takes the highest across multiple other divisions', () => {
+    const record = {
+      Open: buildScores([60, 60, 60, 60], 'open'),
+      CarryOptics: buildScores([85, 86, 87, 88, 87, 86], 'co'),
+      Limited: buildScores([70, 70, 70, 70], 'lim'),
+    }
+    // CO is highest (M), so floor for Limited = A
+    expect(crossDivisionFloorClass(record, 'Limited')).toBe('A')
   })
 })

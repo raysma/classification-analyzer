@@ -57,6 +57,7 @@ export interface RequiredAverageResult {
   targetClass: ClassLetter
   targetThreshold: number
   scoresInWindow: number
+  atTop: boolean
 }
 
 export function requiredAverageToClassUp(
@@ -75,6 +76,7 @@ export function requiredAverageToClassUp(
       targetClass: 'GM',
       targetThreshold: 95,
       scoresInWindow: 0,
+      atTop: true,
     }
   }
 
@@ -86,6 +88,7 @@ export function requiredAverageToClassUp(
       targetClass: target,
       targetThreshold: 95,
       scoresInWindow: 0,
+      atTop: false,
     }
   }
 
@@ -102,6 +105,7 @@ export function requiredAverageToClassUp(
       targetClass: target,
       targetThreshold: threshold,
       scoresInWindow: windowScores.length,
+      atTop: false,
     }
   }
 
@@ -114,6 +118,7 @@ export function requiredAverageToClassUp(
       targetClass: target,
       targetThreshold: threshold,
       scoresInWindow: included.length,
+      atTop: false,
     }
   }
 
@@ -127,6 +132,7 @@ export function requiredAverageToClassUp(
       targetClass: target,
       targetThreshold: threshold,
       scoresInWindow: included.length,
+      atTop: false,
     }
   }
 
@@ -151,5 +157,6 @@ export function requiredAverageToClassUp(
     targetClass: target,
     targetThreshold: threshold,
     scoresInWindow: included.length,
+    atTop: false,
   }
 }

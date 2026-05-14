@@ -67,7 +67,7 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
           <p className="text-xs text-gray-500 dark:text-gray-400">Projected</p>
           {scenarioPct !== null ? (
             <p className="text-xl font-bold tabular-nums">
-              {scenarioPct.toFixed(2)}%{' '}
+              {scenarioPct.toFixed(4)}%{' '}
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 ({scenarioClass})
               </span>
@@ -81,11 +81,11 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
             className={`text-sm font-medium ${delta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
           >
             {delta >= 0 ? '+' : ''}
-            {delta.toFixed(2)}%
+            {delta.toFixed(4)}%
           </div>
         )}
         <div className="ml-auto text-xs text-gray-400">
-          vs actual {currentPercent !== null ? `${currentPercent.toFixed(2)}%` : '—'}
+          vs actual {currentPercent !== null ? `${currentPercent.toFixed(4)}%` : '—'}
         </div>
       </div>
 
@@ -129,13 +129,13 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
                 }
               >
                 {isHypo ? 'Hypothetical' : s.date}
-                {!isHypo && ` · ${s.classifierCode}`} · {s.percent.toFixed(2)}%
+                {!isHypo && ` · ${s.classifierCode}`} · {s.percent.toFixed(4)}%
               </span>
               {isHypo && hypoId && (
                 <button
                   type="button"
                   onClick={() => removeHypothetical(hypoId)}
-                  aria-label={`Remove hypothetical ${s.percent.toFixed(2)}%`}
+                  aria-label={`Remove hypothetical ${s.percent.toFixed(4)}%`}
                   className="ml-auto text-gray-400 hover:text-red-500"
                 >
                   ×
@@ -153,7 +153,7 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
           >
             <span className="w-4 shrink-0 text-center text-gray-400">E</span>
             <span className="line-through">
-              {s.date} · {s.classifierCode} · {s.percent.toFixed(2)}%
+              {s.date} · {s.classifierCode} · {s.percent.toFixed(4)}%
             </span>
           </div>
         ))}

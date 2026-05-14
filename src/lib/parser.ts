@@ -2,13 +2,15 @@ import { parse } from 'node-html-parser'
 import type { HTMLElement as NHElement } from 'node-html-parser'
 import type { Division, ClassLetter, Flag, Classifier, ShooterRecord } from '../types/index'
 
-// data-division attribute values (lowercased) → our Division type
+// data-division attribute values and division name display strings
+// (both lowercased) → our Division type
 const DIVISION_MAP: Record<string, Division> = {
   open: 'Open',
   limited: 'Limited',
   limited_10: 'Limited10',
   limited10: 'Limited10',
   'limited-10': 'Limited10',
+  'limited 10': 'Limited10',
   production: 'Production',
   revolver: 'Revolver',
   singlestack: 'SingleStack',
@@ -21,6 +23,67 @@ const DIVISION_MAP: Record<string, Division> = {
   limited_optics: 'LimitedOptics',
   'limited optics': 'LimitedOptics',
   pcc: 'PCC',
+}
+
+const VALID_CLASS_LETTERS = new Set(['GM', 'M', 'A', 'B', 'C', 'D', 'U'])
+
+// Parse the "Classifications" summary table that lists class letter, current %,
+// and historical high % per division. Returns a partial map; rows that are
+// fully empty (U / 0 / 0) are skipped so downstream can fall back to computed
+// values for divisions the shooter has rolling-window data in but no official
+// entry.
+function parseCurrentClasses(
+  document: NHElement,
+): Partial<Record<Division, { letter: ClassLetter; percent: number; highPercent: number }>> {
+  const result: Partial<Record<Division, { letter: ClassLetter; percent: number; highPercent: number }>> = {}
+
+  // Find the "Classifications" table by its <thead> text.
+  const tables = Array.from(document.querySelectorAll('table'))
+  let target: NHElement | null = null
+  for (const t of tables) {
+    const headText = t.querySelector('thead')?.textContent?.trim() ?? ''
+    if (headText === 'Classifications') {
+      target = t
+      break
+    }
+  }
+  if (!target) return result
+
+  const tbody = target.querySelector('tbody')
+  if (!tbody) return result
+
+  const rows = tbody.children.filter((c) => c.tagName === 'TR') as NHElement[]
+  for (const row of rows) {
+    const th = row.querySelector('th[scope="row"]')
+    const tds = row.children.filter((c) => c.tagName === 'TD') as NHElement[]
+    if (!th || tds.length < 3) continue
+
+    const division = parseDivisionKey((th.textContent ?? '').trim())
+    if (!division) continue
+
+    const classMatch = /Class:\s*([A-Z]+)/i.exec(tds[0]?.textContent ?? '')
+    const pctMatch = /Pct:\s*([\d.]+)/i.exec(tds[1]?.textContent ?? '')
+    const highMatch = /High\s*Pct:\s*([\d.]+)/i.exec(tds[2]?.textContent ?? '')
+    if (!classMatch || !pctMatch || !highMatch) continue
+
+    const letter = classMatch[1]?.toUpperCase() ?? ''
+    if (!VALID_CLASS_LETTERS.has(letter)) continue
+
+    const percent = parseFloat(pctMatch[1] ?? '0')
+    const highPercent = parseFloat(highMatch[1] ?? '0')
+    if (isNaN(percent) || isNaN(highPercent)) continue
+
+    // Skip "empty" rows where USPSA reports no data for this division.
+    if (letter === 'U' && percent === 0 && highPercent === 0) continue
+
+    result[division] = {
+      letter: letter as ClassLetter,
+      percent,
+      highPercent,
+    }
+  }
+
+  return result
 }
 
 
@@ -119,7 +182,7 @@ export function parseClassificationHtml(html: string): ParseResult {
     return { ok: false, error: 'parse_failed' }
   }
 
-  const currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number }>> = {}
+  const currentClasses = parseCurrentClasses(document)
   const classifiers: Partial<Record<Division, Classifier[]>> = {}
   let totalRows = 0
 

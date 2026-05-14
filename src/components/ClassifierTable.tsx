@@ -154,7 +154,7 @@ export default function ClassifierTable({
                   {c.hitFactor !== undefined ? c.hitFactor.toFixed(4) : '—'}
                 </td>
                 <td className={`px-3 py-2 whitespace-nowrap font-mono font-medium ${PERCENT_COLORS[classFor(c.percent)]}`}>
-                  {c.percent.toFixed(2)}%
+                  {c.percent.toFixed(4)}%
                 </td>
                 <td className="px-3 py-2">
                   {c.flag ? (

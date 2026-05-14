@@ -30,6 +30,7 @@ export const ClassifierSchema = z.object({
 export const CurrentClassSchema = z.object({
   letter: ClassLetterSchema,
   percent: z.number().min(0).max(200),
+  highPercent: z.number().min(0).max(200),
 })
 
 export const ShooterRecordSchema = z.object({

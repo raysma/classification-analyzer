@@ -23,7 +23,7 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
   const first = results[0]
   if (!first) return null
 
-  if (first.targetClass === 'GM' && !first.feasible) {
+  if (first.atTop) {
     return (
       <div className="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 p-4 text-sm text-yellow-800 dark:text-yellow-200">
         Congratulations — you&apos;re Grand Master in {formatDivision(division)}! That&apos;s the top class.
@@ -57,7 +57,7 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
               +{k}<span className="hidden sm:inline"> classifier{k !== 1 ? 's' : ''}</span>
             </p>
             {feasible && minAvgPercent !== null ? (
-              <p className="text-sm sm:text-lg font-bold tabular-nums">{minAvgPercent.toFixed(1)}%</p>
+              <p className="text-sm sm:text-lg font-bold tabular-nums">{minAvgPercent.toFixed(2)}%</p>
             ) : (
               <p className="text-sm sm:text-lg font-bold">—</p>
             )}
