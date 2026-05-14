@@ -2,18 +2,23 @@ import { parse } from 'node-html-parser'
 import type { HTMLElement as NHElement } from 'node-html-parser'
 import type { Division, ClassLetter, Flag, Classifier, ShooterRecord } from '../types/index'
 
+// data-division attribute values (lowercased) → our Division type
 const DIVISION_MAP: Record<string, Division> = {
   open: 'Open',
   limited: 'Limited',
+  limited_10: 'Limited10',
   limited10: 'Limited10',
   'limited-10': 'Limited10',
   production: 'Production',
   revolver: 'Revolver',
   singlestack: 'SingleStack',
+  single_stack: 'SingleStack',
   'single stack': 'SingleStack',
   carryoptics: 'CarryOptics',
+  carry_optics: 'CarryOptics',
   'carry optics': 'CarryOptics',
   limitedoptics: 'LimitedOptics',
+  limited_optics: 'LimitedOptics',
   'limited optics': 'LimitedOptics',
   pcc: 'PCC',
 }
@@ -39,28 +44,23 @@ export type ParseResult =
 
 function parseDate(raw: string): string | null {
   const trimmed = raw.trim()
-  // Expected formats: M/D/YYYY or MM/DD/YYYY
-  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed)
-  if (!match) return null
-  const [, m, d, y] = match
-  return `${y}-${m!.padStart(2, '0')}-${d!.padStart(2, '0')}`
+  // MM/DD/YYYY (4-digit year)
+  const match4 = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed)
+  if (match4) {
+    const [, m, d, y] = match4
+    return `${y}-${m!.padStart(2, '0')}-${d!.padStart(2, '0')}`
+  }
+  // MM/DD/YY (2-digit year → 20xx)
+  const match2 = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(trimmed)
+  if (match2) {
+    const [, m, d, y] = match2
+    return `20${y}-${m!.padStart(2, '0')}-${d!.padStart(2, '0')}`
+  }
+  return null
 }
 
-function parseDivisionName(raw: string): Division | null {
-  const key = raw.trim().toLowerCase()
-  return DIVISION_MAP[key] ?? null
-}
-
-function parseCurrentClass(raw: string): { letter: ClassLetter; percent: number } | null {
-  // Format: "A - 78.5%" or "GM - 95.1%"
-  const match = /^([A-Z]+)\s*-\s*([\d.]+)%$/.exec(raw.trim())
-  if (!match) return null
-  const [, letter, percentStr] = match
-  const cls = CLASS_MAP[letter ?? '']
-  if (!cls) return null
-  const percent = parseFloat(percentStr ?? '0')
-  if (isNaN(percent)) return null
-  return { letter: cls, percent }
+function parseDivisionKey(raw: string): Division | null {
+  return DIVISION_MAP[raw.trim().toLowerCase()] ?? null
 }
 
 function parseFlag(raw: string): Flag | null {
@@ -69,11 +69,9 @@ function parseFlag(raw: string): Flag | null {
   return null
 }
 
-function parseMembershipType(
-  raw: string,
-): 'Annual' | 'ThreeYear' | 'FiveYear' | 'Lifetime' | 'Unknown' {
+function parseMembershipType(raw: string): ShooterRecord['membershipType'] {
   const lower = raw.trim().toLowerCase()
-  if (lower.includes('lifetime')) return 'Lifetime'
+  if (lower.includes('life')) return 'Lifetime'
   if (lower.includes('annual')) return 'Annual'
   if (lower.includes('three') || lower.includes('3-year') || lower.includes('3year')) return 'ThreeYear'
   if (lower.includes('five') || lower.includes('5-year') || lower.includes('5year')) return 'FiveYear'
@@ -101,72 +99,64 @@ export function parseClassificationHtml(html: string): ParseResult {
   }
 
   // --- Member info ---
-  const memberInfoEl = document.querySelector('.member-info')
-
-  // If neither member info nor division blocks are present, this isn't a USPSA classification page
-  // (e.g. a Cloudflare challenge page or any other non-classification response)
-  const hasDivisionBlocks = document.querySelectorAll('.division-block').length > 0
-  if (!memberInfoEl && !hasDivisionBlocks) {
-    return { ok: false, error: 'parse_failed' }
-  }
-  const name = (memberInfoEl?.querySelector('h2')?.textContent ?? '').trim()
-
+  // New HTML: <th scope="row">Shooter Name:</th><td>Value</td>
+  let name = ''
   let memberNumber = ''
   let membershipType: ShooterRecord['membershipType'] = 'Unknown'
 
-  const paragraphs = memberInfoEl?.querySelectorAll('p') ?? []
-  for (const p of Array.from(paragraphs)) {
-    const text = (p.textContent ?? '').trim()
-    const memberMatch = /^Member:\s*(.+)$/.exec(text)
-    if (memberMatch) {
-      memberNumber = (memberMatch[1] ?? '').trim()
-      continue
-    }
-    const membershipMatch = /^Membership:\s*(.+)$/.exec(text)
-    if (membershipMatch) {
-      membershipType = parseMembershipType(membershipMatch[1] ?? '')
+  for (const th of Array.from(document.querySelectorAll('th[scope="row"]'))) {
+    const label = (th.textContent ?? '').replace(/:$/, '').trim().toLowerCase()
+    const td = th.nextElementSibling as NHElement | null
+    if (!td) continue
+    const value = (td.textContent ?? '').trim()
+    if (label.includes('shooter name')) {
+      name = value
+    } else if (label.includes('member number')) {
+      memberNumber = value
+    } else if (label.includes('membership expiry')) {
+      membershipType = value.toLowerCase().includes('life') ? 'Lifetime' : 'Annual'
+    } else if (label.includes('membership type')) {
+      membershipType = parseMembershipType(value)
     }
   }
 
-  if (!memberNumber) {
-    warnings.push('Could not parse member number from page')
+  // --- Division detection ---
+  // New HTML: <a class="divisionClick" data-division="PCC">PCC Classifiers</a>
+  const divisionLinks = Array.from(document.querySelectorAll('a.divisionClick'))
+
+  if (divisionLinks.length === 0 && !memberNumber) {
+    return { ok: false, error: 'parse_failed' }
   }
 
-  // --- Division blocks ---
-  const divisionBlocks = Array.from(document.querySelectorAll('.division-block'))
   const currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number }>> = {}
   const classifiers: Partial<Record<Division, Classifier[]>> = {}
-
   let totalRows = 0
 
-  for (const block of divisionBlocks) {
-    const divisionName = (block.querySelector('h3')?.textContent ?? '').trim()
-    const division = parseDivisionName(divisionName)
+  for (const link of divisionLinks) {
+    const divisionKey = (link.getAttribute('data-division') ?? '').trim()
+    const division = parseDivisionKey(divisionKey)
     if (!division) {
-      warnings.push(`Unknown division name: "${divisionName}"`)
+      warnings.push(`Unknown data-division: "${divisionKey}"`)
       continue
     }
 
-    // Parse current class
-    const currentClassText = (block.querySelector('.current-class')?.textContent ?? '').trim()
-    const currentClass = parseCurrentClass(currentClassText)
-    if (currentClass) {
-      currentClasses[division] = currentClass
-    } else {
-      warnings.push(`Could not parse current class for ${division}: "${currentClassText}"`)
+    // Classifier rows live in <tbody id="{divisionKey}-dropDown">
+    const tbody = document.querySelector(`#${divisionKey}-dropDown`)
+    if (!tbody) {
+      warnings.push(`No tbody found for division "${divisionKey}"`)
+      continue
     }
 
-    // Parse classifier rows
-    const rows = Array.from(block.querySelectorAll('table.classifier-table tbody tr'))
+    const allRows = Array.from(tbody.querySelectorAll('tr'))
+    // First row is the column header row (Date, Number, Club, F, Percent, HF, Entered, Source)
+    const dataRows = allRows.slice(1)
     const divClassifiers: Classifier[] = []
 
-    for (const row of rows) {
+    for (const row of dataRows) {
       const cells = Array.from(row.querySelectorAll('td'))
-      if (cells.length < 7) {
-        warnings.push(`Skipping malformed row in ${division}: only ${cells.length} cells`)
-        continue
-      }
+      if (cells.length < 6) continue
 
+      // Column order: date(0), code(1), club(2), flag(3), percent(4), hf(5), entered(6), source(7)
       const dateRaw = cellText(cells[0]!)
       const date = parseDate(dateRaw)
       if (!date) {
@@ -175,15 +165,11 @@ export function parseClassificationHtml(html: string): ParseResult {
       }
 
       const classifierCodeRaw = cellText(cells[1]!)
-      const isMajorMatch =
-        classifierCodeRaw.toLowerCase() === 'major match' ||
-        classifierCodeRaw.toLowerCase().includes('major match')
-
-      const classifierNameRaw = cellText(cells[2]!)
-      const hfRaw = cellText(cells[3]!)
+      const clubRaw = cellText(cells[2]!)
+      const flagRaw = cellText(cells[3]!)
       const percentRaw = cellText(cells[4]!)
-      const flagRaw = cellText(cells[5]!)
-      const sourceRaw = cellText(cells[6]!)
+      const hfRaw = cellText(cells[5]!)
+      const sourceRaw = cells[7] ? cellText(cells[7]!) : ''
 
       const percent = parseFloat(percentRaw)
       if (isNaN(percent)) {
@@ -196,11 +182,11 @@ export function parseClassificationHtml(html: string): ParseResult {
         warnings.push(`Unrecognized flag "${flagRaw}" in ${division}, treating as empty`)
       }
 
+      const isMajorMatch = sourceRaw.toLowerCase().includes('major')
+
       let hitFactor: number | undefined
-      if (!isMajorMatch && hfRaw !== '-' && hfRaw !== '') {
-        const hf = parseFloat(hfRaw)
-        if (!isNaN(hf)) hitFactor = hf
-      }
+      const hf = parseFloat(hfRaw)
+      if (!isNaN(hf)) hitFactor = hf
 
       const classifier: Classifier = {
         date,
@@ -210,9 +196,8 @@ export function parseClassificationHtml(html: string): ParseResult {
         source: isMajorMatch ? 'majorMatch' : 'club',
       }
 
-      if (classifierNameRaw) classifier.classifierName = classifierNameRaw
+      if (isMajorMatch && clubRaw) classifier.matchName = clubRaw
       if (hitFactor !== undefined) classifier.hitFactor = hitFactor
-      if (isMajorMatch && sourceRaw) classifier.matchName = sourceRaw
 
       divClassifiers.push(classifier)
       totalRows++
@@ -223,19 +208,25 @@ export function parseClassificationHtml(html: string): ParseResult {
     }
   }
 
-  if (totalRows === 0 && divisionBlocks.length > 0) {
+  if (totalRows === 0 && divisionLinks.length > 0) {
     return { ok: false, error: 'no_classifiers_parsed' }
   }
 
-  const record: ShooterRecord = {
-    memberNumber: memberNumber || 'UNKNOWN',
-    name,
-    membershipType,
-    currentClasses,
-    classifiers,
-    fetchedAt: new Date().toISOString(),
-    source: 'fetch',
+  if (!memberNumber) {
+    warnings.push('Could not parse member number from page')
   }
 
-  return { ok: true, doc: record, warnings }
+  return {
+    ok: true,
+    doc: {
+      memberNumber: memberNumber || 'UNKNOWN',
+      name,
+      membershipType,
+      currentClasses,
+      classifiers,
+      fetchedAt: new Date().toISOString(),
+      source: 'fetch',
+    },
+    warnings,
+  }
 }
