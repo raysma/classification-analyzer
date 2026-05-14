@@ -75,11 +75,22 @@ describe('requiredAverageToClassUp', () => {
   })
 
   describe('GM shooter', () => {
-    it('returns infeasible (already top class)', () => {
+    it('returns infeasible (already top class) and sets atTop', () => {
       const scores = buildScores([97, 98, 96, 97, 98, 99])
       const result = requiredAverageToClassUp(scores, 1)
       expect(result.targetClass).toBe('GM')
       expect(result.feasible).toBe(false)
+      expect(result.atTop).toBe(true)
+    })
+  })
+
+  describe('atTop guard for M shooter targeting GM', () => {
+    it('does not set atTop when GM is the target but unreachable', () => {
+      // Low M scores; K=1 cannot mathematically reach GM (>110% needed)
+      const scores = buildScores([85, 85, 85, 85, 85, 85])
+      const result = requiredAverageToClassUp(scores, 1)
+      expect(result.targetClass).toBe('GM')
+      expect(result.atTop).toBe(false)
     })
   })
 

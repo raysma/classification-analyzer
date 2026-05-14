@@ -264,10 +264,13 @@ function AppInner() {
 
             {selectedDivision && activeClassifiers.length > 0 && (
               <SummaryCard
-                currentPercent={currentPercent}
+                projectedPercent={currentPercent}
                 windowSize={windowScores.length}
                 division={selectedDivision}
                 {...(allTimeHighPercent !== undefined ? { allTimeHighPercent } : {})}
+                {...(record.currentClasses[selectedDivision]
+                  ? { officialClass: record.currentClasses[selectedDivision] }
+                  : {})}
               />
             )}
 

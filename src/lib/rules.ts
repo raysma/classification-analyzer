@@ -5,8 +5,11 @@ import type { ClassLetter, Flag } from '../types/index'
 import type { ValidatedClassifier } from './validation'
 import type { ClassificationSnapshot } from '../types/index'
 
-// Flags excluded from the rolling window computation (permissive, per uspsaprogress)
-const EXCLUDED_FLAGS: Set<Flag> = new Set(['I', 'Q', 'N'])
+// Flags excluded from the rolling window computation.
+// I/Q/N: admin / DQ / DNF (always excluded).
+// B/C/D/G: retired April 2025; historical scores still carry them but they are
+// not part of any current calculation.
+const EXCLUDED_FLAGS: Set<Flag> = new Set(['I', 'Q', 'N', 'B', 'C', 'D', 'G'])
 
 export function isInvalidFlag(flag: Flag): boolean {
   return EXCLUDED_FLAGS.has(flag)

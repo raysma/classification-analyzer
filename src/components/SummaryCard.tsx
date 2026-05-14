@@ -13,16 +13,35 @@ const CLASS_COLORS: Record<ClassLetter, string> = {
 }
 
 interface Props {
-  currentPercent: number | null
+  projectedPercent: number | null
   windowSize: number
   division: string
   allTimeHighPercent?: number
+  officialClass?: { letter: ClassLetter; percent: number }
 }
 
-export default function SummaryCard({ currentPercent, windowSize, division, allTimeHighPercent }: Props) {
-  const letter = currentPercent !== null ? classFor(currentPercent) : 'U'
+export default function SummaryCard({
+  projectedPercent,
+  windowSize,
+  division,
+  allTimeHighPercent,
+  officialClass,
+}: Props) {
+  // USPSA's official letter wins. Fall back to live computation when not provided
+  // (manual-paste records, where the user only gives us classifier rows).
+  const letter: ClassLetter =
+    officialClass?.letter ?? (projectedPercent !== null ? classFor(projectedPercent) : 'U')
+  const officialPercent = officialClass?.percent ?? null
+  const displayPercent = officialPercent ?? projectedPercent
+
   const threshold = nextClassThreshold(letter)
-  const gap = threshold !== null && currentPercent !== null ? threshold - currentPercent : null
+  const gap =
+    threshold !== null && displayPercent !== null ? threshold - displayPercent : null
+
+  const showProjected =
+    officialPercent !== null &&
+    projectedPercent !== null &&
+    Math.abs(officialPercent - projectedPercent) >= 0.01
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3">
@@ -30,7 +49,7 @@ export default function SummaryCard({ currentPercent, windowSize, division, allT
         {formatDivision(division)} — Current classification
       </p>
 
-      {currentPercent !== null ? (
+      {displayPercent !== null ? (
         <div className="flex items-center gap-4">
           <span
             className={`inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold ${CLASS_COLORS[letter]}`}
@@ -39,16 +58,25 @@ export default function SummaryCard({ currentPercent, windowSize, division, allT
             {letter}
           </span>
           <div>
-            <p className="text-3xl font-bold tabular-nums">{currentPercent.toFixed(2)}%</p>
+            <p className="text-3xl font-bold tabular-nums">{displayPercent.toFixed(2)}%</p>
             {gap !== null && gap > 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {gap.toFixed(2)}% to {classFor(threshold!)} ({threshold}% threshold)
               </p>
             )}
+            {showProjected && projectedPercent !== null && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Projected:{' '}
+                <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                  {projectedPercent.toFixed(2)}%
+                </span>{' '}
+                <span className="text-xs">(next stats run)</span>
+              </p>
+            )}
             {allTimeHighPercent !== undefined && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 All-time high:{' '}
-                <span className="font-medium text-gray-700 dark:text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                   {allTimeHighPercent.toFixed(2)}%
                 </span>
               </p>

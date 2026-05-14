@@ -38,6 +38,12 @@ describe('isInvalidFlag', () => {
     expect(isInvalidFlag('Q')).toBe(true)
     expect(isInvalidFlag('N')).toBe(true)
   })
+  it('excludes retired flags B, C, D, G (April 2025)', () => {
+    expect(isInvalidFlag('B')).toBe(true)
+    expect(isInvalidFlag('C')).toBe(true)
+    expect(isInvalidFlag('D')).toBe(true)
+    expect(isInvalidFlag('G')).toBe(true)
+  })
   it('includes valid flags', () => {
     for (const f of ['Y', 'F', 'E', 'M', 'S', 'A', 'X', 'P', ''] as const) {
       expect(isInvalidFlag(f)).toBe(false)
