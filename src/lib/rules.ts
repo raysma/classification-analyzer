@@ -135,3 +135,56 @@ export function allTimeBestClass(history: ClassificationSnapshot[]): ClassLetter
   }
   return best
 }
+
+// Per USPSA sticky-class rule: once you achieve a class, you don't drop in
+// that division even if the rolling-window percent slips. The displayed
+// letter should reflect the all-time high % achieved, not the current %.
+export function stickyClassFor(
+  currentPercent: number | null,
+  allTimeHighPercent: number | null | undefined,
+): ClassLetter {
+  const high = Math.max(currentPercent ?? 0, allTimeHighPercent ?? 0)
+  if (high <= 0) return 'U'
+  return classFor(high)
+}
+
+// Rank order used for class comparisons. Higher index = better class.
+const CLASS_RANK: ClassLetter[] = ['U', 'D', 'C', 'B', 'A', 'M', 'GM']
+
+export function rankOf(letter: ClassLetter): number {
+  return CLASS_RANK.indexOf(letter)
+}
+
+export function maxClass(a: ClassLetter, b: ClassLetter): ClassLetter {
+  return rankOf(a) >= rankOf(b) ? a : b
+}
+
+// USPSA cross-division rule: a classified division (≥4 in-window scores) can be
+// no more than one letter below the highest classified division. Returns the
+// floor for `scopedDivision` based on every OTHER division's all-time best.
+// Returns null when no other division qualifies (so no floor applies).
+export function crossDivisionFloorClass(
+  classifiersByDivision: Partial<Record<string, ValidatedClassifier[]>>,
+  scopedDivision: string,
+): ClassLetter | null {
+  let highestRank = -1
+
+  for (const div of Object.keys(classifiersByDivision)) {
+    if (div === scopedDivision) continue
+    const scores = classifiersByDivision[div] ?? []
+    if (scores.length < 4) continue
+
+    const window = getCurrentWindow(scores)
+    if (window.getScores().length < 4) continue
+
+    const history = getClassificationHistory(scores)
+    if (history.length === 0) continue
+
+    const high = Math.max(...history.map((h) => h.percent))
+    const rank = rankOf(classFor(high))
+    if (rank > highestRank) highestRank = rank
+  }
+
+  if (highestRank < 1) return null
+  return CLASS_RANK[highestRank - 1] ?? null
+}

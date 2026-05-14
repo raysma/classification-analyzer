@@ -1,4 +1,4 @@
-import { classFor, nextClassThreshold } from '../lib/rules'
+import { nextClassThreshold, stickyClassFor, maxClass } from '../lib/rules'
 import { formatDivision } from '../lib/formatters'
 import type { ClassLetter } from '../types/index'
 
@@ -18,6 +18,7 @@ interface Props {
   division: string
   allTimeHighPercent?: number
   officialClass?: { letter: ClassLetter; percent: number }
+  crossDivisionFloor?: ClassLetter | null
 }
 
 export default function SummaryCard({
@@ -26,11 +27,17 @@ export default function SummaryCard({
   division,
   allTimeHighPercent,
   officialClass,
+  crossDivisionFloor,
 }: Props) {
-  // USPSA's official letter wins. Fall back to live computation when not provided
-  // (manual-paste records, where the user only gives us classifier rows).
-  const letter: ClassLetter =
-    officialClass?.letter ?? (projectedPercent !== null ? classFor(projectedPercent) : 'U')
+  // Sticky class: floor by all-time high in this division.
+  const stickyLetter = stickyClassFor(projectedPercent, allTimeHighPercent ?? null)
+  // Apply USPSA's cross-division floor (other divisions' high pulls this one up).
+  const computedLetter: ClassLetter = crossDivisionFloor
+    ? maxClass(stickyLetter, crossDivisionFloor)
+    : stickyLetter
+  // USPSA's parsed letter (when populated) is authoritative; otherwise use computed.
+  const letter: ClassLetter = officialClass?.letter ?? computedLetter
+
   const officialPercent = officialClass?.percent ?? null
   const displayPercent = officialPercent ?? projectedPercent
 
@@ -61,7 +68,7 @@ export default function SummaryCard({
             <p className="text-3xl font-bold tabular-nums">{displayPercent.toFixed(2)}%</p>
             {gap !== null && gap > 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {gap.toFixed(2)}% to {classFor(threshold!)} ({threshold}% threshold)
+                {gap.toFixed(2)}% to next threshold ({threshold}%)
               </p>
             )}
             {showProjected && projectedPercent !== null && (

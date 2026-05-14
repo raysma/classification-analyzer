@@ -19,7 +19,12 @@ import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
 import { readUrlState, useUrlSync } from './lib/urlState'
-import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
+import {
+  getCurrentWindow,
+  bestSixOfRecentEight,
+  getClassificationHistory,
+  crossDivisionFloorClass,
+} from './lib/rules'
 import { formatDivision } from './lib/formatters'
 import type { Division } from './types/index'
 
@@ -267,6 +272,7 @@ function AppInner() {
                 projectedPercent={currentPercent}
                 windowSize={windowScores.length}
                 division={selectedDivision}
+                crossDivisionFloor={crossDivisionFloorClass(record.classifiers, selectedDivision)}
                 {...(allTimeHighPercent !== undefined ? { allTimeHighPercent } : {})}
                 {...(record.currentClasses[selectedDivision]
                   ? { officialClass: record.currentClasses[selectedDivision] }

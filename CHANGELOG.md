@@ -4,8 +4,8 @@
 
 ### Bug fixes
 
-- **Sticky class letter**: the summary card now displays USPSA's official class letter (which never drops once achieved), with the live rolling-window percent shown as a "projected — next stats run" line when it differs.
-- **Cross-division floor**: since the displayed letter now comes straight from USPSA's record, the one-letter-below cross-division rule is reflected correctly.
+- **Sticky class letter**: the summary card now applies USPSA's "once classified, you don't drop" rule by using the maximum of your current rolling-window percent and your all-time high in the division to derive the displayed class letter.
+- **Cross-division floor**: the one-letter-below cross-division rule is now applied. A division with ≥4 scores will never display lower than one letter below your highest classified division.
 - **Retired flags**: B, C, D, and G flags (retired April 2025) are no longer counted toward the rolling window. Historical scores carrying these flags will no longer incorrectly appear as included.
 - **False Grand Master message**: the "Congratulations — you're Grand Master" notice no longer fires for Master-class shooters who can't quite reach GM in one classifier.
 
