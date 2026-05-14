@@ -66,9 +66,22 @@ export function requiredAverageToClassUp(
 ): RequiredAverageResult {
   const history = getClassificationHistory(scores)
   const best = allTimeBestClass(history)
-  const target = nextTargetClass(best === 'U' ? classFor(0) : best)
 
-  // If current is GM, no target
+  // For unclassified shooters (no history yet — fewer than 4 valid scores),
+  // predict the class they're trending toward from the simple average of
+  // their available scores. The "next class up" from that trend is a more
+  // useful target than always defaulting to D.
+  let referenceClass: ClassLetter = best
+  if (best === 'U' && scores.length > 0) {
+    const simpleAvg = scores.reduce((acc, s) => acc + s.percent, 0) / scores.length
+    referenceClass = classFor(simpleAvg)
+  }
+
+  const target = nextTargetClass(referenceClass === 'U' ? classFor(0) : referenceClass)
+
+  // No target means the effective class is GM. Only celebrate as "at top"
+  // if the shooter is actually classified GM, not just trending GM-level
+  // with <4 scores.
   if (!target) {
     return {
       minAvgPercent: null,
@@ -76,7 +89,7 @@ export function requiredAverageToClassUp(
       targetClass: 'GM',
       targetThreshold: 95,
       scoresInWindow: 0,
-      atTop: true,
+      atTop: best === 'GM',
     }
   }
 

@@ -49,12 +49,14 @@ export function sortClassifiers(scores: ValidatedClassifier[]): ValidatedClassif
 // Per USPSA rules (April 2025):
 // n=4 → mean of all 4; n=5 → mean of all 5; n=6 → mean of 6;
 // n=7 → best 6 of 7; n≥8 → best 6 of recent 8
+// n<4 → no classification yet, but the scores are still "in" the rolling
+// window (not dropped). They're just pending an initial classification.
 export function bestSixOfRecentEight(scores: ValidatedClassifier[]): {
   included: ValidatedClassifier[]
   dropped: ValidatedClassifier[]
 } {
   const n = scores.length
-  if (n < 4) return { included: [], dropped: scores }
+  if (n === 0) return { included: [], dropped: [] }
   if (n <= 6) return { included: scores, dropped: [] }
 
   // n=7: best 6 of all 7
