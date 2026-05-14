@@ -105,9 +105,16 @@ describe('bestSixOfRecentEight — documented n behavior', () => {
     // 10% (first entry) not in pool at all
   })
 
-  it('n<4: no included', () => {
-    const { included } = bestSixOfRecentEight([mkScore(80), mkScore(82)])
+  it('n<4: returns all as included (pending initial classification, not dropped)', () => {
+    const { included, dropped } = bestSixOfRecentEight([mkScore(80), mkScore(82), mkScore(75)])
+    expect(included.length).toBe(3)
+    expect(dropped.length).toBe(0)
+  })
+
+  it('n=0: empty included and dropped', () => {
+    const { included, dropped } = bestSixOfRecentEight([])
     expect(included.length).toBe(0)
+    expect(dropped.length).toBe(0)
   })
 })
 

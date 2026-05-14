@@ -109,3 +109,49 @@ describe('requiredAverageToClassUp', () => {
     })
   })
 })
+
+describe('unclassified shooter — target uses trending class', () => {
+  it('3 scores averaging ~48% (C trend) targets B', () => {
+    const scores = buildScores([47.12, 47.88, 49.29])
+    const result = requiredAverageToClassUp(scores, 1)
+    expect(result.targetClass).toBe('B')
+    expect(result.targetThreshold).toBe(60)
+    expect(result.minAvgPercent).not.toBeNull()
+    expect(result.minAvgPercent).toBeGreaterThan(90) // (60*4 - 48*3 ≈ 96)
+  })
+
+  it('3 scores averaging ~70% (B trend) targets A', () => {
+    const scores = buildScores([68, 70, 72])
+    const result = requiredAverageToClassUp(scores, 1)
+    expect(result.targetClass).toBe('A')
+    expect(result.targetThreshold).toBe(75)
+  })
+
+  it('3 scores averaging ~1% (still U trend) targets D', () => {
+    const scores = buildScores([1, 1, 1])
+    const result = requiredAverageToClassUp(scores, 1)
+    expect(result.targetClass).toBe('D')
+    expect(result.targetThreshold).toBe(2)
+  })
+
+  it('3 scores at GM-level (95+%) returns atTop=false (not actually classified)', () => {
+    const scores = buildScores([95, 96, 97])
+    const result = requiredAverageToClassUp(scores, 1)
+    // Trending GM but unclassified — atTop should NOT trigger the
+    // "Congratulations" message, and minAvgPercent is null (no useful
+    // target above GM).
+    expect(result.targetClass).toBe('GM')
+    expect(result.atTop).toBe(false)
+    expect(result.minAvgPercent).toBeNull()
+  })
+
+  it('cards for K=1..5 show decreasing required average for C-trending shooter', () => {
+    const scores = buildScores([48, 48, 48])
+    const results = [1, 2, 3, 4, 5].map((k) => requiredAverageToClassUp(scores, k))
+    const values = results.map((r) => r.minAvgPercent).filter((v): v is number => v !== null)
+    // Should be monotonically non-increasing
+    for (let i = 1; i < values.length; i++) {
+      expect(values[i]!).toBeLessThanOrEqual(values[i - 1]! + 0.01)
+    }
+  })
+})

@@ -4,6 +4,8 @@
 
 ### Bug fixes
 
+- **Pending classifiers no longer flagged F**: for shooters with fewer than 4 scores in a division, their existing classifiers now show as included (Y) rather than dropped (F) in the what-if panel and classifier table. They're not "dropped" — there's just no classification computed yet.
+- **Smarter class-up targets for unclassified shooters**: when a shooter has fewer than 4 classifiers, the class-up cards now target the class above their trending average (based on the simple mean of their available scores) rather than always defaulting to D. A C-trending shooter sees what they need to reach B, etc.
 - **USPSA-precision percentages**: percentages across the app now display with 4-decimal precision to match USPSA (e.g. `96.1064%`). Class-up cards stay at 2 decimals to fit narrow mobile screens.
 - **Authoritative class from USPSA**: the summary card now parses USPSA's official class letter, current percent, and historical high percent from the "Classifications" summary table on the USPSA page. This is the source of truth and captures every promotion pathway (rolling window, major-match auto-promotion, sticky-class).
 - **All-time high accuracy**: when fetched from USPSA, the all-time high reflects USPSA's recorded peak rather than our re-computed estimate. Manual paste records show the computed value with an "(estimated)" tag.
