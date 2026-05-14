@@ -4,6 +4,7 @@
 
 ### Bug fixes
 
+- **USPSA-precision percentages**: percentages across the app now display with 4-decimal precision to match USPSA (e.g. `96.1064%`). Class-up cards stay at 2 decimals to fit narrow mobile screens.
 - **Authoritative class from USPSA**: the summary card now parses USPSA's official class letter, current percent, and historical high percent from the "Classifications" summary table on the USPSA page. This is the source of truth and captures every promotion pathway (rolling window, major-match auto-promotion, sticky-class).
 - **All-time high accuracy**: when fetched from USPSA, the all-time high reflects USPSA's recorded peak rather than our re-computed estimate. Manual paste records show the computed value with an "(estimated)" tag.
 - **Sticky class letter (fallback)**: for manual-paste records, applies USPSA's "once classified, you don't drop" rule via max of current and all-time-high percent.
