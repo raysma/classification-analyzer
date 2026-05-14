@@ -110,11 +110,10 @@ export default function ClassUpInsights({ classifiers, division, officialClass }
             className={`rounded-lg p-2 sm:p-3 text-center ${colorFn(feasible ? requiredPercent : null, feasible)}`}
           >
             <p className="text-xs font-medium mb-1 leading-tight">
-              +{k}<span className="hidden sm:inline"> classifier{k !== 1 ? 's' : ''}</span>
+              +{k}<span className="hidden sm:inline"> classifier{k !== 1 ? 's' : ''}</span>{isDown && ' ↓'}
             </p>
             {feasible && requiredPercent !== null ? (
               <p className="text-sm sm:text-lg font-bold tabular-nums">
-                {isDown && '≤'}
                 {requiredPercent.toFixed(1)}%
               </p>
             ) : (
