@@ -10,7 +10,7 @@ interface Props {
   officialClass?: { letter: ClassLetter; percent: number; highPercent: number }
 }
 
-const TARGET_OPTIONS: ClassLetter[] = ['D', 'C', 'B', 'A', 'M', 'GM']
+const TARGET_OPTIONS: ClassLetter[] = ['GM', 'M', 'A', 'B', 'C', 'D']
 
 function colorForUp(pct: number | null, feasible: boolean): string {
   if (!feasible || pct === null) return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
