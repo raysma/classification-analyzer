@@ -1,4 +1,5 @@
 import { requiredAverageToClassUp } from '../lib/projection'
+import { formatDivision } from '../lib/formatters'
 import type { ValidatedClassifier } from '../lib/validation'
 
 interface Props {
@@ -25,7 +26,7 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
   if (first.targetClass === 'GM' && !first.feasible) {
     return (
       <div className="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 p-4 text-sm text-yellow-800 dark:text-yellow-200">
-        Congratulations — you&apos;re Grand Master in {division}! That&apos;s the top class.
+        Congratulations — you&apos;re Grand Master in {formatDivision(division)}! That&apos;s the top class.
       </div>
     )
   }
@@ -35,7 +36,7 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
     return (
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-400">
         {needed > 0
-          ? `Need ${needed} more classifier${needed !== 1 ? 's' : ''} in ${division} before class-up math applies.`
+          ? `Need ${needed} more classifier${needed !== 1 ? 's' : ''} in ${formatDivision(division)} before class-up math applies.`
           : 'Not enough scores to project class-up yet.'}
       </div>
     )

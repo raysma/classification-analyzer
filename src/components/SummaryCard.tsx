@@ -1,4 +1,5 @@
 import { classFor, nextClassThreshold } from '../lib/rules'
+import { formatDivision } from '../lib/formatters'
 import type { ClassLetter } from '../types/index'
 
 const CLASS_COLORS: Record<ClassLetter, string> = {
@@ -26,7 +27,7 @@ export default function SummaryCard({ currentPercent, windowSize, division, allT
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-3">
       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        {division} — Current classification
+        {formatDivision(division)} — Current classification
       </p>
 
       {currentPercent !== null ? (

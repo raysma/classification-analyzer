@@ -1,4 +1,5 @@
 import type { Division } from '../types/index'
+import { formatDivision } from '../lib/formatters'
 
 interface Props {
   divisions: Division[]
@@ -28,7 +29,7 @@ export default function DivisionTabs({ divisions, scoreCounts, selected, onSelec
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
             ].join(' ')}
           >
-            {div}
+            {formatDivision(div)}
             <span className="ml-1.5 text-xs opacity-75">({count})</span>
           </button>
         )

@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore'
 import type { Division } from '../types/index'
 import type { ValidatedShooterRecord } from '../lib/validation'
 import { DivisionSchema } from '../lib/validation'
+import { formatDivision } from '../lib/formatters'
 
 const DIVISIONS = DivisionSchema.options
 
@@ -48,7 +49,7 @@ export default function ManualPastePanel() {
     setStatus(
       `Parsed ${result.parsedRows} row${result.parsedRows !== 1 ? 's' : ''}` +
         (result.skippedRows > 0 ? `, skipped ${result.skippedRows}` : '') +
-        `. Division ${division} added to record.`,
+        `. Division ${formatDivision(division)} added to record.`,
     )
     setText('')
   }
@@ -94,7 +95,7 @@ export default function ManualPastePanel() {
               >
                 {DIVISIONS.map((d) => (
                   <option key={d} value={d}>
-                    {d}
+                    {formatDivision(d)}
                   </option>
                 ))}
               </select>

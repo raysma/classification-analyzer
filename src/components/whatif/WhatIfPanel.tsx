@@ -1,6 +1,7 @@
 import { useAppStore } from '../../store/useAppStore'
 import HypotheticalScoreForm from './HypotheticalScoreForm'
 import { getCurrentWindow, classFor, bestSixOfRecentEight } from '../../lib/rules'
+import { formatDivision } from '../../lib/formatters'
 import type { ValidatedClassifier } from '../../lib/validation'
 
 interface Props {
@@ -47,7 +48,7 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
     <div className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          What-if simulator — {division}
+          What-if simulator — {formatDivision(division)}
         </h3>
         {hasChanges && (
           <button
