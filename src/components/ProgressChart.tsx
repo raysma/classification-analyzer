@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   ComposedChart,
-  Scatter,
-  Cell,
   Line,
   ReferenceLine,
   XAxis,
@@ -12,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import type { TooltipProps } from 'recharts'
 import type { ValidatedClassifier } from '../lib/validation'
 import type { ClassificationSnapshot, ClassLetter } from '../types/index'
 import { classFor } from '../lib/rules'
@@ -39,23 +38,30 @@ function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(() =>
     document.documentElement.classList.contains('dark'),
   )
-
   useEffect(() => {
     const observer = new MutationObserver(() => {
       setIsDark(document.documentElement.classList.contains('dark'))
     })
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     return () => observer.disconnect()
   }, [])
-
   return isDark
 }
 
 function dateToNum(date: string): number {
   return new Date(date + 'T00:00:00').getTime()
+}
+
+function formatDate(val: number): string {
+  return new Date(val).toLocaleDateString('en-US', { year: '2-digit', month: 'short' })
+}
+
+interface ScoreDatum {
+  x: number
+  pct: number
+  flag: string
+  code: string
+  cname: string | undefined
 }
 
 interface Props {
@@ -73,30 +79,64 @@ export default function ProgressChart({ classifiers, history }: Props) {
   const tooltipBorder = isDark ? '#374151' : '#e5e7eb'
   const tooltipColor = isDark ? '#f3f4f6' : '#111827'
 
-  const scatterData = classifiers.map((c) => ({
-    x: dateToNum(c.date),
-    y: c.percent,
-    flag: c.flag,
-    code: c.classifierCode,
-    name: c.classifierName,
-  }))
+  // Sort ascending so Line renders correctly left-to-right
+  const scoreData: ScoreDatum[] = [...classifiers]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((c) => ({
+      x: dateToNum(c.date),
+      pct: c.percent,
+      flag: c.flag,
+      code: c.classifierCode,
+      cname: c.classifierName,
+    }))
 
   const lineData = history.map((h) => ({
     x: dateToNum(h.date),
     avg: h.percent,
   }))
 
-  const allXValues = [
-    ...scatterData.map((d) => d.x),
-    ...lineData.map((d) => d.x),
-  ]
+  const allXValues = [...scoreData.map((d) => d.x), ...lineData.map((d) => d.x)]
   const minX = allXValues.length > 0 ? Math.min(...allXValues) : Date.now()
   const maxX = allXValues.length > 0 ? Math.max(...allXValues) : Date.now()
   const xPad = (maxX - minX) * 0.05 || 86400000
 
-  function formatDate(val: number): string {
-    return new Date(val).toLocaleDateString('en-US', { year: '2-digit', month: 'short' })
-  }
+  const renderTooltip = useCallback(
+    (props: TooltipProps<number, string>) => {
+      const { active, payload, label } = props
+      if (!active || !payload?.length) return null
+
+      const scoreItem = payload.find((p) => p.dataKey === 'pct')
+      const avgItem = payload.find((p) => p.dataKey === 'avg')
+
+      return (
+        <div
+          style={{
+            backgroundColor: tooltipBg,
+            border: `1px solid ${tooltipBorder}`,
+            color: tooltipColor,
+            fontFamily: 'inherit',
+            fontSize: 12,
+            padding: '6px 10px',
+            borderRadius: 4,
+            lineHeight: 1.6,
+          }}
+        >
+          <p style={{ fontWeight: 600, marginBottom: 2 }}>{formatDate(label as number)}</p>
+          {scoreItem && (
+            <p style={{ color: SCORE_POINT_COLORS[classFor(Number(scoreItem.value))] }}>
+              {(scoreItem.payload as ScoreDatum).code}: {Number(scoreItem.value).toFixed(2)}%
+            </p>
+          )}
+          {avgItem && (
+            <p style={{ color: '#0ea5e9' }}>
+              Classification: {Number(avgItem.value).toFixed(2)}%
+            </p>
+          )}
+        </div>
+      )
+    },
+    [tooltipBg, tooltipBorder, tooltipColor],
+  )
 
   return (
     <div className="space-y-2">
@@ -131,19 +171,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
               tickFormatter={(v: number) => `${v}%`}
               width={40}
             />
-            <Tooltip
-              labelFormatter={(val: number) => formatDate(val)}
-              formatter={(val: number, name: string) => [`${val.toFixed(2)}%`, name]}
-              contentStyle={{
-                backgroundColor: tooltipBg,
-                borderColor: tooltipBorder,
-                color: tooltipColor,
-                fontFamily: 'inherit',
-                fontSize: 12,
-              }}
-              itemStyle={{ color: tooltipColor, fontFamily: 'inherit', fontSize: 12 }}
-              labelStyle={{ color: tooltipColor, fontFamily: 'inherit', fontSize: 12 }}
-            />
+            <Tooltip content={renderTooltip} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
 
             {CLASS_BANDS.map((band) => (
@@ -156,24 +184,40 @@ export default function ProgressChart({ classifiers, history }: Props) {
               />
             ))}
 
-            <Scatter
-              name="Classifiers"
-              data={scatterData}
-              dataKey="y"
-              shape={(props: unknown) => {
-                const { cx, cy, fill } = props as { cx: number; cy: number; fill: string }
+            {/*
+             * strokeWidth=0 renders only dots, no connecting line.
+             * Line's tooltip uses nearest-x detection across the full chart width,
+             * so the tooltip fires reliably without needing pixel-perfect hover over a dot.
+             * (Scatter's tooltip uses exact x-value matching which fails with unique timestamps.)
+             */}
+            <Line
+              data={scoreData}
+              dataKey="pct"
+              strokeWidth={0}
+              isAnimationActive={false}
+              legendType="none"
+              dot={(props: unknown) => {
+                const p = props as { cx: number; cy: number; payload: ScoreDatum }
+                const color = SCORE_POINT_COLORS[classFor(p.payload.pct)]
+                return <circle key={`dot-${p.payload.x}`} cx={p.cx} cy={p.cy} r={5} fill={color} opacity={0.85} />
+              }}
+              activeDot={(props: unknown) => {
+                const p = props as { cx: number; cy: number; payload: ScoreDatum }
+                const color = SCORE_POINT_COLORS[classFor(p.payload.pct)]
                 return (
-                  <g>
-                    <circle cx={cx} cy={cy} r={10} fill="transparent" />
-                    <circle cx={cx} cy={cy} r={5} fill={fill} opacity={0.85} />
-                  </g>
+                  <circle
+                    key={`adot-${p.payload.x}`}
+                    cx={p.cx}
+                    cy={p.cy}
+                    r={7}
+                    fill={color}
+                    stroke="white"
+                    strokeWidth={2}
+                    opacity={0.95}
+                  />
                 )
               }}
-            >
-              {scatterData.map((entry, i) => (
-                <Cell key={i} fill={SCORE_POINT_COLORS[classFor(entry.y)]} />
-              ))}
-            </Scatter>
+            />
 
             <Line
               name="Classification %"
@@ -183,6 +227,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
               stroke="#0ea5e9"
               strokeWidth={2}
               dot={false}
+              activeDot={false}
               connectNulls
             />
           </ComposedChart>
