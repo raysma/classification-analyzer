@@ -91,7 +91,7 @@ export default function ManualPastePanel() {
                 id="paste-division"
                 value={division}
                 onChange={(e) => setDivision(e.target.value as Division)}
-                className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm"
+                className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
               >
                 {DIVISIONS.map((d) => (
                   <option key={d} value={d}>
@@ -108,7 +108,7 @@ export default function ManualPastePanel() {
             rows={8}
             placeholder="Paste classifier table here…"
             aria-label="Paste classifier data"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-mono resize-y"
+            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base sm:text-xs font-mono resize-y"
           />
 
           <div className="flex gap-2 flex-wrap">
