@@ -81,21 +81,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
       const totalLen = html.length
 
-      // Search for division names and table structures anywhere in the HTML
-      const DIVISION_ANCHORS = ['carry optics', 'open', 'production', 'limited', 'revolver', 'pcc', 'single stack', 'thead-inverse', 'shooter name', 'member number']
+      // Show three 3000-char windows covering the middle zone where classification tables live
       const snippets: string[] = [
         `Page title: "${pageTitle}" | total length: ${totalLen}`,
+        `\n--- ZONE A (offset 205000) ---\n${html.slice(205000, 208000)}`,
+        `\n--- ZONE B (offset 225000) ---\n${html.slice(225000, 228000)}`,
+        `\n--- ZONE C (offset 245000) ---\n${html.slice(245000, 248000)}`,
       ]
-      for (const anchor of DIVISION_ANCHORS) {
-        const idx = html.toLowerCase().indexOf(anchor)
-        if (idx >= 0) {
-          const start = Math.max(0, idx - 200)
-          snippets.push(`\n--- "${anchor}" found at offset ${idx} ---\n${html.slice(start, idx + 800)}`)
-          break // just find the first one to identify where content starts
-        }
-      }
-      // Show the last 8000 chars of the page — classification tables are typically near the end
-      snippets.push(`\n--- PAGE END (last 8000 chars, offset ${totalLen - 8000}) ---\n${html.slice(Math.max(0, totalLen - 8000))}`)
       const responseSnippet = snippets.join('\n')
       console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
