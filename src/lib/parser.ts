@@ -123,8 +123,15 @@ export function parseClassificationHtml(html: string): ParseResult {
   const classifiers: Partial<Record<Division, Classifier[]>> = {}
   let totalRows = 0
 
+  // Deduplicate division links — the rendered USPSA page may repeat the same
+  // data-division value in multiple nav menus (mobile, desktop, print, etc.).
+  const seenDivisionKeys = new Set<string>()
+
   for (const link of divisionLinks) {
     const divisionKey = (link.getAttribute('data-division') ?? '').trim()
+    if (seenDivisionKeys.has(divisionKey)) continue
+    seenDivisionKeys.add(divisionKey)
+
     const division = parseDivisionKey(divisionKey)
     if (!division) {
       warnings.push(`Unknown data-division: "${divisionKey}"`)
@@ -138,13 +145,16 @@ export function parseClassificationHtml(html: string): ParseResult {
       continue
     }
 
-    const allRows = Array.from(tbody.querySelectorAll('tr'))
+    // Use direct TR children only — querySelectorAll('tr') would also walk into
+    // nested <tbody> elements that the browser renderer places inside this one,
+    // causing rows from other divisions to leak into this division's results.
+    const allRows = tbody.children.filter((c) => c.tagName === 'TR') as NHElement[]
     // First row is the column header row (Date, Number, Club, F, Percent, HF, Entered, Source)
     const dataRows = allRows.slice(1)
     const divClassifiers: Classifier[] = []
 
     for (const row of dataRows) {
-      const cells = Array.from(row.querySelectorAll('td'))
+      const cells = row.children.filter((c) => c.tagName === 'TD') as NHElement[]
       if (cells.length < 6) continue
 
       // Column order: date(0), code(1), club(2), flag(3), percent(4), hf(5), entered(6), source(7)
