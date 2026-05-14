@@ -80,23 +80,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
       const totalLen = html.length
-      // Find the body start to skip all the <head> CSS/JS boilerplate
-      const bodyIdx = html.search(/<body[\s>]/i)
-      const bodyStart = bodyIdx >= 0 ? bodyIdx : Math.floor(totalLen * 0.5)
-      // Also extract all <form> tags to find the lookup form action + field names
-      const formMatches: string[] = []
-      const formRe = /<form[\s\S]{0,1000}?<\/form>/gi
-      let fm: RegExpExecArray | null
-      while ((fm = formRe.exec(html)) !== null && formMatches.length < 5) {
-        formMatches.push(fm[0].slice(0, 400))
+
+      // Find interesting anchors in the HTML to show relevant context
+      const ANCHORS = ['member-info', 'division-block', 'classifier-table', 'current-class']
+      const snippets: string[] = [
+        `Page title: "${pageTitle}" | total length: ${totalLen}`,
+      ]
+      for (const anchor of ANCHORS) {
+        const idx = html.toLowerCase().indexOf(anchor)
+        if (idx >= 0) {
+          const start = Math.max(0, idx - 100)
+          snippets.push(`\n--- "${anchor}" found at offset ${idx} ---\n${html.slice(start, idx + 600)}`)
+        } else {
+          snippets.push(`\n--- "${anchor}" NOT FOUND IN PAGE ---`)
+        }
       }
-      const responseSnippet = [
-        `Page title: "${pageTitle}" | total length: ${totalLen} | body offset: ${bodyStart}`,
-        `\n--- BODY START (${bodyStart}) to +3000 ---`,
-        html.slice(bodyStart, bodyStart + 3000),
-        `\n--- FORMS FOUND (${formMatches.length}) ---`,
-        ...formMatches.map((f, i) => `\nForm ${i + 1}:\n${f}`),
-      ].join('\n')
+      // Show 3000 chars from the midpoint of the page (skips navigation, hits content)
+      const midIdx = Math.floor(totalLen * 0.5)
+      snippets.push(`\n--- MIDPOINT (offset ${midIdx}) ---\n${html.slice(midIdx, midIdx + 3000)}`)
+      // Also look for the member form and show what follows it
+      const formIdx = html.toLowerCase().indexOf('name="number"')
+      if (formIdx >= 0) {
+        const afterForm = html.indexOf('</form>', formIdx)
+        const showFrom = afterForm >= 0 ? afterForm : formIdx + 200
+        snippets.push(`\n--- AFTER MEMBER FORM (offset ${showFrom}) ---\n${html.slice(showFrom, showFrom + 3000)}`)
+      }
+      const responseSnippet = snippets.join('\n')
       console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
       return
