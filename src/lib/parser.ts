@@ -23,15 +23,6 @@ const DIVISION_MAP: Record<string, Division> = {
   pcc: 'PCC',
 }
 
-const CLASS_MAP: Record<string, ClassLetter> = {
-  GM: 'GM',
-  M: 'M',
-  A: 'A',
-  B: 'B',
-  C: 'C',
-  D: 'D',
-  U: 'U',
-}
 
 const VALID_FLAGS = new Set(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', 'N', 'B', 'C', 'D', 'G', ''])
 
