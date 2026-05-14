@@ -245,6 +245,11 @@ Deployment: pushes to `main` → production, pushes to any other branch → prev
 - No backwards-compat shims, no `_unused` renames, no removed-code comments.
 - Tests are co-located: `foo.ts` next to `foo.test.ts`.
 
+## PR conventions
+
+- **Pull requests from `develop` → `main`**: include only the substantive changes — a bulleted list of what was done and why. Do **not** include a "Test plan" section, a "Summary" header, or any other procedural scaffolding. The CHANGELOG is the canonical place for user-facing release notes; the main PR body should be a concise description of the diff.
+- PRs for feature branches into `develop` can include test plans where useful.
+
 ## Repo hygiene
 
 - No secrets in repo. Vercel env vars only.
