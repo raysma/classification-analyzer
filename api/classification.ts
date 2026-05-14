@@ -81,13 +81,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
       const totalLen = html.length
 
-      // Show three 3000-char windows covering the middle zone where classification tables live
       const snippets: string[] = [
         `Page title: "${pageTitle}" | total length: ${totalLen}`,
-        `\n--- ZONE A (offset 205000) ---\n${html.slice(205000, 208000)}`,
-        `\n--- ZONE B (offset 225000) ---\n${html.slice(225000, 228000)}`,
-        `\n--- ZONE C (offset 245000) ---\n${html.slice(245000, 248000)}`,
       ]
+      // Show 5000 chars starting from "Classifier Scores" heading — that's where the tables are
+      const classifierScoresIdx = html.toLowerCase().indexOf('classifier scores')
+      if (classifierScoresIdx >= 0) {
+        snippets.push(`\n--- "Classifier Scores" found at offset ${classifierScoresIdx} ---\n${html.slice(classifierScoresIdx, classifierScoresIdx + 5000)}`)
+      } else {
+        snippets.push('\n--- "Classifier Scores" NOT FOUND ---')
+      }
+      // Show context around first *-dropDown id to understand division wrapper structure
+      const dropDownIdx = html.toLowerCase().indexOf('-dropdown')
+      if (dropDownIdx >= 0) {
+        const start = Math.max(0, dropDownIdx - 300)
+        snippets.push(`\n--- first "-dropDown" at offset ${dropDownIdx} ---\n${html.slice(start, dropDownIdx + 1000)}`)
+      } else {
+        snippets.push('\n--- "-dropDown" NOT FOUND ---')
+      }
       const responseSnippet = snippets.join('\n')
       console.error(`[classification] parse_failed for ${member} — title: "${pageTitle}" len: ${totalLen}`)
       res.status(502).json({ error: 'parse_failed', responseSnippet })
