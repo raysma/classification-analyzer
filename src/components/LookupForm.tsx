@@ -26,7 +26,7 @@ export default function LookupForm({ onSubmit, isLoading, initialMember = '' }: 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-w-md">
       <label htmlFor="member-input" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        Member number
+        USPSA member number
       </label>
       <div className="flex gap-2">
         <input

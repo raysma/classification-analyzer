@@ -18,6 +18,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
 import { readUrlState, useUrlSync } from './lib/urlState'
 import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
+import { formatDivision } from './lib/formatters'
 import type { Division } from './types/index'
 
 const queryClient = new QueryClient({
@@ -184,10 +185,7 @@ function AppInner() {
       <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold">Classification Analyzer</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              USPSA classifier history and class-up insights
-            </p>
+            <h1 className="text-xl font-bold">USPSA Classification Analyzer</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
@@ -257,7 +255,7 @@ function AppInner() {
 
             {selectedDivision && activeClassifiers.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                No classifiers found for {selectedDivision}.
+                No classifiers found for {formatDivision(selectedDivision)}.
               </p>
             )}
 
@@ -280,7 +278,7 @@ function AppInner() {
 
             {selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
               <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
-                Only {activeClassifiers.length} of 4 classifiers in {selectedDivision} — needs{' '}
+                Only {activeClassifiers.length} of 4 classifiers in {formatDivision(selectedDivision)} — needs{' '}
                 {4 - activeClassifiers.length} more for an initial classification.
               </p>
             )}
