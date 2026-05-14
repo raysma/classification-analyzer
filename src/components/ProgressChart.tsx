@@ -53,7 +53,10 @@ function dateToNum(date: string): number {
 }
 
 function formatDate(val: number): string {
-  return new Date(val).toLocaleDateString('en-US', { year: '2-digit', month: 'short' })
+  const d = new Date(val)
+  const month = d.toLocaleDateString('en-US', { month: 'short' })
+  const year = d.getFullYear().toString().slice(2)
+  return `${month} '${year}`
 }
 
 interface ScoreDatum {
@@ -70,7 +73,6 @@ interface Props {
 }
 
 export default function ProgressChart({ classifiers, history }: Props) {
-  const [showAll, setShowAll] = useState(false)
   const [activeX, setActiveX] = useState<number | null>(null)
   const isDark = useIsDark()
 
@@ -150,18 +152,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Score history</p>
-        <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showAll}
-            onChange={(e) => setShowAll(e.target.checked)}
-            className="rounded"
-          />
-          Show all scores
-        </label>
-      </div>
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Score history</p>
 
       <div className="h-72 w-full rounded-md border border-gray-200 dark:border-gray-700 p-2">
         <ResponsiveContainer width="100%" height="100%">
