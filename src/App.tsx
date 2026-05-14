@@ -197,9 +197,9 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <LookupForm onSubmit={handleLookup} isLoading={isFetching} initialMember={readUrlState().memberNumber ?? ''} />
+        <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
 
-        {isFetching && memberNumber && (
+        {isFetching && !data && memberNumber && (
           <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
