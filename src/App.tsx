@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useQuery } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
@@ -337,6 +339,8 @@ export default function App() {
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
         <AppInner />
       </PersistQueryClientProvider>
+      <Analytics />
+      <SpeedInsights />
     </ErrorBoundary>
   )
 }
