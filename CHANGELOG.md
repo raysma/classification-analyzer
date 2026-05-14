@@ -2,6 +2,10 @@
 
 ## 2026-05-15
 
+### New features
+
+- **"Journey to" class picker**: the class-up section now lets you pick any target class (D–GM) from a dropdown instead of always defaulting to the next class above. GMs can pick a lower class to see *exactly how poorly they'd have to shoot* over their next 1–5 classifiers to drop into it — math is direction-aware (minimum required for going up, maximum allowed for going down).
+
 ### Bug fixes
 
 - **Pending classifiers no longer flagged F**: for shooters with fewer than 4 scores in a division, their existing classifiers now show as included (Y) rather than dropped (F) in the what-if panel and classifier table. They're not "dropped" — there's just no classification computed yet.
