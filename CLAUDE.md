@@ -14,7 +14,7 @@ A web app that fetches a USPSA shooter's classification record by member number,
 
 ## Prior art
 
-- **`uspsaprogress/progress`** (TS + webpack + vanilla DOM, ISC). Origin of the rules math ported into `src/lib/rules.ts`: rolling window, MRO via classifier-number dedup, score-needed projection, and the "all-time-best class as the next-class-to-chase floor" UX detail. The lodash dependency is stripped during port. Attribution lives in `NOTICE` and at the top of `src/lib/rules.ts`.
+- **`uspsaprogress/progress`** (TS + webpack + vanilla DOM, ISC). Origin of the rules math ported into `src/lib/rules.ts`: rolling window, MRO via classifier-number dedup, score-needed projection, and the "all-time-best class as the next-class-to-chase floor" UX detail. The lodash dependency is stripped during port. Attribution lives at the top of `src/lib/rules.ts`.
 - **`practiscore-editor`** (sibling project). Architectural blueprint via `architecture-template.md`. Provides the stack (Vite + React + TS + Tailwind + Zustand + Zod + Vitest + Vercel), the project layout, the `develop` + `main` branch strategy, and the coding conventions used throughout.
 
 ## Tech stack (non-negotiables)
@@ -52,8 +52,8 @@ USPSA's site does not expose a public JSON API for member classification records
 [Browser SPA] ──> [Vercel Function /api/classification]
                        │
                        ├─ validates member number (1–3 letter prefix + digits; e.g. A, TY, FY, L)
-                       ├─ fetches https://uspsa.org/classification/<memberNumber>
-                       ├─ parses HTML -> typed JSON (linkedom)
+                       ├─ fetches via ScrapingAnt (browser=true) -> full rendered USPSA page
+                       ├─ parses HTML -> typed JSON (node-html-parser)
                        ├─ Zod-validates the parsed shape
                        ├─ caches by member number (CDN headers)
                        └─ returns { shooter, divisions: { [div]: Classifier[] }, warnings: string[] }
@@ -82,8 +82,6 @@ All math (current %, trendline, class-up insights, what-if) runs client-side in 
 ├── CHANGELOG.md
 ├── CLAUDE.md
 ├── PLAN.md
-├── NOTICE                       # Attributions (uspsaprogress port)
-├── docs/                        # Long-form reference (USPSA rules, parser strategy)
 ├── tests/
 │   └── fixtures/uspsa/          # Sanitized USPSA HTML fixtures
 └── src/
@@ -102,6 +100,7 @@ All math (current %, trendline, class-up insights, what-if) runs client-side in 
     │   ├── parser.test.ts
     │   ├── textParser.ts        # Pasted TSV -> Classifier[] (ported from uspsaprogress)
     │   ├── textParser.test.ts
+    │   ├── formatters.ts        # formatDivision() — camelCase -> spaced display names
     │   ├── urlState.ts          # useUrlState hook over URLSearchParams
     │   └── validation.ts        # Zod schemas
     ├── api/
