@@ -90,16 +90,28 @@ export default function ProgressChart({ classifiers, history }: Props) {
   const tooltipBorder = isDark ? '#374151' : '#e5e7eb'
   const tooltipColor = isDark ? '#f3f4f6' : '#111827'
 
-  // Sort ascending so Line renders correctly left-to-right
-  const scoreData: ScoreDatum[] = [...classifiers]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((c) => ({
-      x: dateToNum(c.date),
-      pct: c.percent,
-      flag: c.flag,
-      code: c.classifierCode,
-      cname: c.classifierName,
-    }))
+  // Sort ascending so Line renders correctly left-to-right.
+  // Deduplicate by (date, code): USPSA can return multiple rows for the same
+  // classifier on the same day (e.g. individual attempts + an S-flagged average),
+  // which causes duplicate dots and duplicate tooltip entries.
+  const scoreData: ScoreDatum[] = (() => {
+    const seen = new Set<string>()
+    return [...classifiers]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .filter((c) => {
+        const key = `${c.date}:${c.classifierCode}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .map((c) => ({
+        x: dateToNum(c.date),
+        pct: c.percent,
+        flag: c.flag,
+        code: c.classifierCode,
+        cname: c.classifierName,
+      }))
+  })()
 
   // Ref so renderTooltip always reads the latest scoreData without needing it in deps
   const scoreDataRef = useRef(scoreData)
