@@ -1,50 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useTheme } from '../lib/useTheme'
+import type { Theme } from '../lib/useTheme'
 
-type Theme = 'light' | 'dark' | 'system'
-
-function getSystemPrefersDark(): boolean {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-}
-
-function applyTheme(theme: Theme) {
-  const dark = theme === 'dark' || (theme === 'system' && getSystemPrefersDark())
-  document.documentElement.classList.toggle('dark', dark)
-}
+const THEME_OPTIONS: { value: Theme; icon: string; label: string }[] = [
+  { value: 'light', icon: '☀', label: 'Light' },
+  { value: 'system', icon: '◑', label: 'Auto' },
+  { value: 'dark', icon: '☾', label: 'Dark' },
+]
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme | null) ?? 'system'
-  })
-
-  useEffect(() => {
-    applyTheme(theme)
-    localStorage.setItem('theme', theme)
-  }, [theme])
-
-  // Listen for system preference changes when in 'system' mode
-  useEffect(() => {
-    if (theme !== 'system') return
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => applyTheme('system')
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [theme])
-
-  const label = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'
-
-  function cycle() {
-    setTheme((t) => (t === 'system' ? 'light' : t === 'light' ? 'dark' : 'system'))
-  }
+  const { theme, setTheme } = useTheme()
 
   return (
-    <button
-      type="button"
-      onClick={cycle}
-      aria-label={`Toggle theme, current: ${label}`}
-      title={`Theme: ${label}`}
-      className="rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+    <select
+      value={theme}
+      onChange={(e) => setTheme(e.target.value as Theme)}
+      aria-label="Color theme"
+      className="rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 py-1 pl-1.5 pr-6 text-xs text-gray-600 dark:text-gray-300 cursor-pointer"
     >
-      {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥'}
-    </button>
+      {THEME_OPTIONS.map(({ value, icon, label }) => (
+        <option key={value} value={value}>
+          {icon} {label}
+        </option>
+      ))}
+    </select>
   )
 }
