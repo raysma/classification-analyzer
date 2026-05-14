@@ -14,6 +14,5 @@
 
 ### New features
 
-- **Dark mode**: three-way theme toggle (Light / Auto / Dark) in the header. Preference persisted to `localStorage`. Auto mode follows the OS preference in real time.
-- **Chart dark mode**: chart tooltip, grid, and axis labels now adapt to dark mode.
+- **Dark mode**: three-way theme toggle (Light / Auto / Dark) in the header. Preference persisted to `localStorage`. Auto mode follows the OS preference in real time. Chart, tooltip, grid, and axis labels all adapt to the selected theme.
 - **Classification % line**: the chart line now shows your USPSA classification percentage after each classifier, labeled clearly as "Classification %" instead of "Rolling avg".
