@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   ComposedChart,
   Line,
@@ -90,11 +90,9 @@ export default function ProgressChart({ classifiers, history }: Props) {
   const tooltipBorder = isDark ? '#374151' : '#e5e7eb'
   const tooltipColor = isDark ? '#f3f4f6' : '#111827'
 
-  // Sort ascending so Line renders correctly left-to-right.
-  // Deduplicate by (date, code): USPSA can return multiple rows for the same
-  // classifier on the same day (e.g. individual attempts + an S-flagged average),
-  // which causes duplicate dots and duplicate tooltip entries.
-  const scoreData: ScoreDatum[] = (() => {
+  // Sort ascending; deduplicate by (date, code).
+  // Memoized so renderTooltip can capture it directly via closure deps.
+  const scoreData: ScoreDatum[] = useMemo(() => {
     const seen = new Set<string>()
     return [...classifiers]
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -111,11 +109,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
         code: c.classifierCode,
         cname: c.classifierName,
       }))
-  })()
-
-  // Ref so renderTooltip always reads the latest scoreData without needing it in deps
-  const scoreDataRef = useRef(scoreData)
-  scoreDataRef.current = scoreData
+  }, [classifiers])
 
   const lineData = history.map((h) => ({
     x: dateToNum(h.date),
@@ -137,7 +131,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
       // Show ALL classifiers on the active date, not just the one Recharts picked
       const activeTimestamp = typeof label === 'number' ? label : null
       const allOnDate = activeTimestamp !== null
-        ? scoreDataRef.current.filter((d) => d.x === activeTimestamp)
+        ? scoreData.filter((d) => d.x === activeTimestamp)
         : []
 
       return (
@@ -167,7 +161,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
         </div>
       )
     },
-    [tooltipBg, tooltipBorder, tooltipColor],
+    [tooltipBg, tooltipBorder, tooltipColor, scoreData],
   )
 
   return (
@@ -202,7 +196,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
               tickFormatter={(v: number) => `${v}%`}
               width={40}
             />
-            <Tooltip content={renderTooltip} />
+            <Tooltip content={renderTooltip} isAnimationActive={false} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
 
             {CLASS_BANDS.map((band) => (
