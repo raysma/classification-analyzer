@@ -47,17 +47,19 @@ export default function ClassUpInsights({ classifiers, division }: Props) {
       <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
         Class-up to {first.targetClass} ({first.targetThreshold}% threshold) — required average
       </p>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
         {results.map(({ k, minAvgPercent, feasible }) => (
           <div
             key={k}
-            className={`rounded-lg p-3 text-center ${colorForPercent(feasible ? minAvgPercent : 111)}`}
+            className={`rounded-lg p-2 sm:p-3 text-center ${colorForPercent(feasible ? minAvgPercent : 111)}`}
           >
-            <p className="text-xs font-medium mb-1">+{k} classifier{k !== 1 ? 's' : ''}</p>
+            <p className="text-xs font-medium mb-1 leading-tight">
+              +{k}<span className="hidden sm:inline"> classifier{k !== 1 ? 's' : ''}</span>
+            </p>
             {feasible && minAvgPercent !== null ? (
-              <p className="text-lg font-bold tabular-nums">{minAvgPercent.toFixed(1)}%</p>
+              <p className="text-sm sm:text-lg font-bold tabular-nums">{minAvgPercent.toFixed(1)}%</p>
             ) : (
-              <p className="text-lg font-bold">—</p>
+              <p className="text-sm sm:text-lg font-bold">—</p>
             )}
           </div>
         ))}
