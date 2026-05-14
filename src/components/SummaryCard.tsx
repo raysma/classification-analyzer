@@ -15,9 +15,10 @@ interface Props {
   currentPercent: number | null
   windowSize: number
   division: string
+  allTimeHighPercent?: number
 }
 
-export default function SummaryCard({ currentPercent, windowSize, division }: Props) {
+export default function SummaryCard({ currentPercent, windowSize, division, allTimeHighPercent }: Props) {
   const letter = currentPercent !== null ? classFor(currentPercent) : 'U'
   const threshold = nextClassThreshold(letter)
   const gap = threshold !== null && currentPercent !== null ? threshold - currentPercent : null
@@ -61,6 +62,12 @@ export default function SummaryCard({ currentPercent, windowSize, division }: Pr
       <p className="text-xs text-gray-400 dark:text-gray-500">
         {windowSize} score{windowSize !== 1 ? 's' : ''} in window
       </p>
+
+      {allTimeHighPercent !== undefined && (
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          All-time best: <span className="font-medium text-gray-600 dark:text-gray-300">{allTimeHighPercent.toFixed(2)}%</span>
+        </p>
+      )}
     </div>
   )
 }

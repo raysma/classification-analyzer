@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ComposedChart,
   Scatter,
@@ -23,6 +23,25 @@ const CLASS_BANDS = [
   { label: 'D', threshold: 2, color: '#ef4444' },
 ]
 
+function useIsDark(): boolean {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains('dark'),
+  )
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
+
 function dateToNum(date: string): number {
   return new Date(date + 'T00:00:00').getTime()
 }
@@ -34,6 +53,13 @@ interface Props {
 
 export default function ProgressChart({ classifiers, history }: Props) {
   const [showAll, setShowAll] = useState(false)
+  const isDark = useIsDark()
+
+  const gridColor = isDark ? '#374151' : '#e5e7eb'
+  const textColor = isDark ? '#9ca3af' : '#6b7280'
+  const tooltipBg = isDark ? '#1f2937' : 'white'
+  const tooltipBorder = isDark ? '#374151' : '#e5e7eb'
+  const tooltipColor = isDark ? '#f3f4f6' : '#111827'
 
   const scatterData = classifiers.map((c) => ({
     x: dateToNum(c.date),
@@ -77,25 +103,33 @@ export default function ProgressChart({ classifiers, history }: Props) {
 
       <div className="h-72 w-full rounded-md border border-gray-200 dark:border-gray-700 p-2">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <ComposedChart margin={{ top: 8, right: 48, bottom: 8, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             <XAxis
               dataKey="x"
               type="number"
               domain={[minX - xPad, maxX + xPad]}
               tickFormatter={formatDate}
               scale="time"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, fill: textColor }}
             />
             <YAxis
               domain={[0, 110]}
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, fill: textColor }}
               tickFormatter={(v: number) => `${v}%`}
               width={40}
             />
             <Tooltip
               labelFormatter={(val: number) => formatDate(val)}
               formatter={(val: number, name: string) => [`${val.toFixed(2)}%`, name]}
+              contentStyle={{
+                backgroundColor: tooltipBg,
+                borderColor: tooltipBorder,
+                color: tooltipColor,
+                fontFamily: 'inherit',
+              }}
+              itemStyle={{ color: tooltipColor }}
+              labelStyle={{ color: tooltipColor }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
 
@@ -119,7 +153,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
             />
 
             <Line
-              name="Rolling avg"
+              name="Classification %"
               data={lineData}
               dataKey="avg"
               type="monotone"

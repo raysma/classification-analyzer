@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { Flag } from '../types/index'
+import type { Flag, ClassLetter } from '../types/index'
 import type { ValidatedClassifier } from '../lib/validation'
+import { classFor } from '../lib/rules'
 
 const FLAG_DESCRIPTIONS: Record<Flag, string> = {
   S: 'Same-Day Average — multiple attempts on the same day are averaged into one',
@@ -38,6 +39,16 @@ const FLAG_CLASSES: Record<Flag, string> = {
   D: 'text-gray-400',
   G: 'text-gray-400',
   '': '',
+}
+
+const PERCENT_COLORS: Record<ClassLetter, string> = {
+  GM: 'text-yellow-500 dark:text-yellow-400',
+  M:  'text-purple-500 dark:text-purple-400',
+  A:  'text-blue-500 dark:text-blue-400',
+  B:  'text-green-500 dark:text-green-400',
+  C:  'text-orange-400 dark:text-orange-300',
+  D:  'text-red-400 dark:text-red-300',
+  U:  'text-gray-400',
 }
 
 type SortKey = 'date' | 'percent' | 'hitFactor'
@@ -142,7 +153,7 @@ export default function ClassifierTable({
                 <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">
                   {c.hitFactor !== undefined ? c.hitFactor.toFixed(4) : '—'}
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap font-mono font-medium">
+                <td className={`px-3 py-2 whitespace-nowrap font-mono font-medium ${PERCENT_COLORS[classFor(c.percent)]}`}>
                   {c.percent.toFixed(2)}%
                 </td>
                 <td className="px-3 py-2">

@@ -16,7 +16,6 @@ interface AppState {
   warnings: string[]
 
   // Scenario (what-if) state — reset on division change
-  excludedExistingIds: string[]
   hypotheticalScores: HypotheticalScore[]
 
   setMemberNumber: (n: string) => void
@@ -28,7 +27,6 @@ interface AppState {
   reset: () => void
 
   // Scenario actions
-  toggleExcluded: (id: string) => void
   addHypothetical: (score: HypotheticalScore) => void
   removeHypothetical: (id: string) => void
   resetScenario: () => void
@@ -43,13 +41,12 @@ export const useAppStore = create<AppState>()(
       lastLookupAt: null,
       pastedRecord: null,
       warnings: [],
-      excludedExistingIds: [],
       hypotheticalScores: [],
 
       setMemberNumber: (memberNumber) => set({ memberNumber }),
       setSelectedDivision: (selectedDivision) => {
         if (selectedDivision !== get().selectedDivision) {
-          set({ selectedDivision, excludedExistingIds: [], hypotheticalScores: [] })
+          set({ selectedDivision, hypotheticalScores: [] })
         }
       },
       setLastLookupAt: (lastLookupAt) => set({ lastLookupAt }),
@@ -63,16 +60,8 @@ export const useAppStore = create<AppState>()(
           lastLookupAt: null,
           pastedRecord: null,
           warnings: [],
-          excludedExistingIds: [],
           hypotheticalScores: [],
         }),
-
-      toggleExcluded: (id) =>
-        set((state) => ({
-          excludedExistingIds: state.excludedExistingIds.includes(id)
-            ? state.excludedExistingIds.filter((x) => x !== id)
-            : [...state.excludedExistingIds, id],
-        })),
 
       addHypothetical: (score) =>
         set((state) => ({
@@ -87,22 +76,18 @@ export const useAppStore = create<AppState>()(
           hypotheticalScores: state.hypotheticalScores.filter((s) => s.id !== id),
         })),
 
-      resetScenario: () => set({ excludedExistingIds: [], hypotheticalScores: [] }),
+      resetScenario: () => set({ hypotheticalScores: [] }),
 
       buildScenarioScores: (windowScores) => {
-        const { excludedExistingIds, hypotheticalScores } = get()
-        const excluded = new Set(excludedExistingIds)
-        const base = windowScores.filter(
-          (s) => !excluded.has(`${s.date}:${s.classifierCode}`),
-        )
+        const { hypotheticalScores } = get()
         const hypo: ValidatedClassifier[] = hypotheticalScores.map((h, i) => ({
           date: `9999-${String(i + 1).padStart(2, '0')}-01`,
           classifierCode: `hypo-${h.id}`,
           percent: h.percent,
-          flag: 'Y',
-          source: 'club',
+          flag: 'Y' as const,
+          source: 'club' as const,
         }))
-        return [...base, ...hypo]
+        return [...windowScores, ...hypo]
       },
     }),
     {

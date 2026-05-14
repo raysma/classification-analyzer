@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
@@ -15,6 +15,7 @@ import ClassUpInsights from './components/ClassUpInsights'
 import WhatIfPanel from './components/whatif/WhatIfPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
+import ChangelogModal from './components/ChangelogModal'
 import { readUrlState, useUrlSync } from './lib/urlState'
 import { getCurrentWindow, bestSixOfRecentEight, getClassificationHistory } from './lib/rules'
 import type { Division } from './types/index'
@@ -97,6 +98,8 @@ function ErrorBanner({ error }: { error: unknown }) {
 }
 
 function AppInner() {
+  const [showChangelog, setShowChangelog] = useState(false)
+
   const {
     memberNumber,
     selectedDivision,
@@ -165,6 +168,7 @@ function AppInner() {
   const windowScores = rollingWindow?.getScores() ?? []
   const { included, dropped } = bestSixOfRecentEight(windowScores)
   const history = activeClassifiers.length > 0 ? getClassificationHistory(activeClassifiers) : []
+  const allTimeHighPercent = history.length > 0 ? Math.max(...history.map((h) => h.percent)) : undefined
 
   const includedIds = new Set(included.map((c) => `${c.date}:${c.classifierCode}`))
   const droppedIds = new Set(dropped.map((c) => `${c.date}:${c.classifierCode}`))
@@ -178,7 +182,7 @@ function AppInner() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-4">
-        <div className="max-w-5xl mx-auto flex items-start justify-between gap-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold">Classification Analyzer</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -187,12 +191,6 @@ function AppInner() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
-            <a
-              href="#about"
-              className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
-            >
-              About
-            </a>
           </div>
         </div>
       </header>
@@ -234,11 +232,13 @@ function AppInner() {
 
         {record && (
           <div className="space-y-4">
-            <div className="flex items-start gap-4 flex-wrap">
+            <div className="flex items-center gap-4 flex-wrap">
               <div>
                 <p className="text-lg font-semibold">{record.name}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {record.memberNumber} · {record.membershipType}
+                  {record.source === 'paste'
+                    ? null
+                    : `${record.memberNumber} · ${record.membershipType}`}
                 </p>
               </div>
               {record.source === 'paste' && (
@@ -266,6 +266,7 @@ function AppInner() {
                 currentPercent={currentPercent}
                 windowSize={windowScores.length}
                 division={selectedDivision}
+                {...(allTimeHighPercent !== undefined ? { allTimeHighPercent } : {})}
               />
             )}
 
@@ -303,68 +304,20 @@ function AppInner() {
           </div>
         )}
 
-        {/* About section */}
-        <section
-          id="about"
-          className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-3 text-sm text-gray-600 dark:text-gray-400"
-        >
-          <h2 className="font-semibold text-gray-800 dark:text-gray-200">About</h2>
-          <p>
-            Classification Analyzer looks up USPSA shooter records and visualizes score progression
-            over time. Enter your member number to fetch your record, or paste a classifier table
-            manually.
-          </p>
-          <div>
-            <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Classification brackets</p>
-            <ul className="text-xs space-y-0.5">
-              <li>GM: 95–110% &nbsp; M: 85–94.9% &nbsp; A: 75–84.9% &nbsp; B: 60–74.9%</li>
-              <li>C: 40–59.9% &nbsp; D: 2–39.9%</li>
-            </ul>
+        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500">
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowChangelog(true)}
+              className="hover:text-gray-600 dark:hover:text-gray-300 underline underline-offset-2"
+            >
+              What&apos;s new
+            </button>
+            <span aria-hidden="true">·</span>
+            <span>Crafted with love for the shooting community.</span>
           </div>
-          <div>
-            <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Flag legend</p>
-            <ul className="text-xs space-y-0.5">
-              <li>Y = Included in current average &nbsp; F = Dropped (lower score)</li>
-              <li>E = Outside window &nbsp; M = Most Recent Override &nbsp; S = Same-Day Average</li>
-              <li>I/Q/N = Excluded (admin/DQ/DNF) &nbsp; A = Invalidated (&gt;20% above class)</li>
-              <li>P = Pending &nbsp; X = Expired membership</li>
-            </ul>
-          </div>
-          <p>
-            Classification window math follows{' '}
-            <a
-              href="https://uspsa.org/classification/about"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              USPSA&apos;s April 2025 rules
-            </a>
-            : best 6 of most recent 8 (with n=4..6 edge cases).
-          </p>
-          <p className="text-xs">
-            Data is fetched from uspsa.org and cached for 15 minutes. We don&apos;t store member
-            numbers beyond the CDN cache. Rules math adapted from{' '}
-            <a
-              href="https://github.com/uspsaprogress/progress"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              uspsaprogress/progress
-            </a>{' '}
-            (ISC).{' '}
-            <a
-              href="https://github.com/raysma/classification-analyzer"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              Source on GitHub
-            </a>
-            .
-          </p>
-        </section>
+        </footer>
+        {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
       </main>
     </div>
   )
