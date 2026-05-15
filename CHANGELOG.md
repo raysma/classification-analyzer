@@ -8,6 +8,7 @@
 
 ### Bug fixes
 
+- **Ghost duplicate rows on tab switch**: same-day repeats of a classifier no longer pile up at the top of the table after switching divisions, and only the MRO survivor is highlighted as in-window.
 - **Class-up direction respects USPSA's official class**: the dropdown's direction (up vs down vs maintain) now uses USPSA's authoritative class letter when available, not our rolling-window-derived class. Previously a GM-promoted shooter whose rolling average never reached 95% would see "next class down" as maintain (definitive %) instead of down — those classes are now correctly direction='down' and tagged with the `↓` indicator.
 - **Pending classifiers no longer flagged F**: for shooters with fewer than 4 scores in a division, their existing classifiers now show as included (Y) rather than dropped (F) in the what-if panel and classifier table. They're not "dropped" — there's just no classification computed yet.
 - **Smarter class-up targets for unclassified shooters**: when a shooter has fewer than 4 classifiers, the class-up cards now target the class above their trending average (based on the simple mean of their available scores) rather than always defaulting to D. A C-trending shooter sees what they need to reach B, etc.

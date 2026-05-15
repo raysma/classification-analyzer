@@ -286,3 +286,90 @@ describe('crossDivisionFloorClass — USPSA one-letter-below rule', () => {
     expect(crossDivisionFloorClass(record, 'Limited')).toBe('A')
   })
 })
+
+describe('input-array immutability', () => {
+  const synthetic: ValidatedClassifier = {
+    date: '9999-01-01',
+    classifierCode: 'ghost-1',
+    percent: 95,
+    flag: 'Y',
+    source: 'club',
+  }
+
+  function buildSeries(percents: number[]): ValidatedClassifier[] {
+    return percents.map((p, i) => {
+      const month = String((i % 12) + 1).padStart(2, '0')
+      const day = String((i % 28) + 1).padStart(2, '0')
+      return mkScore(p, `2024-${month}-${day}`, `99-${String(10 + i).padStart(2, '0')}`)
+    })
+  }
+
+  it('bestSixOfRecentEight returns a fresh array for n<=6 (no aliasing)', () => {
+    const arr = buildSeries([60, 65, 70, 72, 74])
+    const snapshot = structuredClone(arr)
+
+    const { included } = bestSixOfRecentEight(arr)
+    expect(included).not.toBe(arr)
+    included.push(synthetic)
+
+    expect(arr).toEqual(snapshot)
+    expect(arr.length).toBe(5)
+  })
+
+  it('bestSixOfRecentEight does not alias the input for n>=8', () => {
+    const arr = buildSeries([60, 62, 64, 66, 68, 70, 72, 74, 76, 78])
+    const snapshot = structuredClone(arr)
+
+    const { included, dropped } = bestSixOfRecentEight(arr)
+    included.push(synthetic)
+    dropped.push(synthetic)
+
+    expect(arr).toEqual(snapshot)
+    expect(arr.length).toBe(10)
+  })
+
+  it('RollingWindow.getScores returns a fresh array each call', () => {
+    const arr = buildSeries([70, 72, 74, 76, 78])
+    const w = getCurrentWindow(arr)
+    expect(w.getScores()).not.toBe(w.getScores())
+  })
+
+  it('round-trip through getCurrentWindow + getScores + bestSixOfRecentEight does not mutate the source array', () => {
+    const arr = buildSeries([60, 65, 70, 72, 74, 76, 78, 80, 82, 84])
+    const snapshot = structuredClone(arr)
+
+    const w = getCurrentWindow(arr)
+    const ws = w.getScores()
+    const { included, dropped } = bestSixOfRecentEight(ws)
+    // Simulate a careless caller mutating what they think is a local array
+    ws.push(synthetic)
+    included.push(synthetic)
+    dropped.push(synthetic)
+
+    expect(arr).toEqual(snapshot)
+    expect(arr.length).toBe(10)
+  })
+
+  it('division-switch simulation: classifiers map is not mutated by repeated reads', () => {
+    const record = {
+      CarryOptics: buildSeries([60, 65, 70, 72, 74, 76, 78, 80, 82, 84]),
+      Open: buildSeries([55, 58, 61, 64, 67]),
+    }
+    const snapshot = structuredClone(record)
+
+    for (let i = 0; i < 5; i++) {
+      for (const div of ['CarryOptics', 'Open'] as const) {
+        const active = record[div]
+        const w = getCurrentWindow(active)
+        const ws = w.getScores()
+        const { included, dropped } = bestSixOfRecentEight(ws)
+        // Pretend a downstream consumer pushes a synthetic onto the returned arrays
+        ws.push(synthetic)
+        included.push(synthetic)
+        dropped.push(synthetic)
+      }
+    }
+
+    expect(record).toEqual(snapshot)
+  })
+})
