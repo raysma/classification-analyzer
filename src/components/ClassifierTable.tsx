@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Flag, ClassLetter } from '../types/index'
 import type { ValidatedClassifier } from '../lib/validation'
 import { classFor } from '../lib/rules'
+import { classifierKey } from '../lib/classifierKey'
 
 const FLAG_DESCRIPTIONS: Record<Flag, string> = {
   S: 'Same-Day Average — multiple attempts on the same day are averaged into one',
@@ -61,10 +62,6 @@ interface Props {
   excludedIds?: Set<string>
 }
 
-function classifierRowId(c: ValidatedClassifier): string {
-  return `${c.date}:${c.classifierCode}`
-}
-
 export default function ClassifierTable({
   classifiers,
   highlightedIds,
@@ -101,7 +98,7 @@ export default function ClassifierTable({
   }
 
   function rowBg(c: ValidatedClassifier): string {
-    const id = classifierRowId(c)
+    const id = classifierKey(c)
     if (excludedIds?.has(id)) return 'opacity-40'
     if (highlightedIds?.has(id)) return 'bg-green-50 dark:bg-green-950'
     if (droppedIds?.has(id)) return 'bg-amber-50 dark:bg-amber-950'
@@ -141,7 +138,7 @@ export default function ClassifierTable({
           {sorted.map((c) => {
             const desc = FLAG_DESCRIPTIONS[c.flag]
             return (
-              <tr key={classifierRowId(c)} className={`transition-colors ${rowBg(c)}`}>
+              <tr key={classifierKey(c)} className={`transition-colors ${rowBg(c)}`}>
                 <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">{c.date}</td>
                 <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">{c.classifierCode}</td>
                 <td className="px-3 py-2 text-gray-700 dark:text-gray-300">

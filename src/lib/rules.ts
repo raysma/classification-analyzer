@@ -57,7 +57,7 @@ export function bestSixOfRecentEight(scores: ValidatedClassifier[]): {
 } {
   const n = scores.length
   if (n === 0) return { included: [], dropped: [] }
-  if (n <= 6) return { included: scores, dropped: [] }
+  if (n <= 6) return { included: [...scores], dropped: [] }
 
   // n=7: best 6 of all 7
   // n≥8: best 6 of the most recent 8
@@ -86,7 +86,7 @@ export class RollingWindow {
   }
 
   getScores(): ValidatedClassifier[] {
-    return this.scores
+    return [...this.scores]
   }
 
   classificationScore(): number | null {

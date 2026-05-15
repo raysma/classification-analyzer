@@ -1,6 +1,7 @@
 import { useAppStore } from '../../store/useAppStore'
 import HypotheticalScoreForm from './HypotheticalScoreForm'
 import { getCurrentWindow, classFor, bestSixOfRecentEight } from '../../lib/rules'
+import { classifierKey } from '../../lib/classifierKey'
 import { formatDivision } from '../../lib/formatters'
 import type { ValidatedClassifier } from '../../lib/validation'
 
@@ -18,8 +19,8 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
   const scenarioWindow = getCurrentWindow(scenarioScores)
   const scenarioWindowScores = scenarioWindow.getScores()
   const { included: scenIncluded, dropped: scenDropped } = bestSixOfRecentEight(scenarioWindowScores)
-  const scenIncludedIds = new Set(scenIncluded.map((s) => `${s.date}:${s.classifierCode}`))
-  const scenDroppedIds = new Set(scenDropped.map((s) => `${s.date}:${s.classifierCode}`))
+  const scenIncludedIds = new Set(scenIncluded.map(classifierKey))
+  const scenDroppedIds = new Set(scenDropped.map(classifierKey))
 
   const scenarioPct = scenarioWindow.classificationScore()
   const scenarioClass = scenarioPct !== null ? classFor(scenarioPct) : null
@@ -31,10 +32,8 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
   const hypoCodeSet = new Set(hypoCodeToId.keys())
 
   // Real scores that got pushed out of the window because hypotheticals took their spots
-  const scenWindowIds = new Set(scenarioWindowScores.map((s) => `${s.date}:${s.classifierCode}`))
-  const pushedOut = windowScores.filter(
-    (s) => !scenWindowIds.has(`${s.date}:${s.classifierCode}`),
-  )
+  const scenWindowIds = new Set(scenarioWindowScores.map(classifierKey))
+  const pushedOut = windowScores.filter((s) => !scenWindowIds.has(classifierKey(s)))
 
   // Display order: hypotheticals first (newest), then real scores newest-to-oldest
   const displayScores = [...scenarioWindowScores].sort((a, b) => {
@@ -100,7 +99,7 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
         )}
 
         {displayScores.map((s) => {
-          const id = `${s.date}:${s.classifierCode}`
+          const id = classifierKey(s)
           const isHypo = hypoCodeSet.has(s.classifierCode)
           const isIncluded = scenIncludedIds.has(id)
           const isDropped = scenDroppedIds.has(id)
@@ -148,7 +147,7 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
         {/* Scores pushed out of the window by hypotheticals */}
         {pushedOut.map((s) => (
           <div
-            key={`out-${s.date}:${s.classifierCode}`}
+            key={`out-${classifierKey(s)}`}
             className="flex items-center gap-2 text-xs px-1 py-0.5 opacity-40"
           >
             <span className="w-4 shrink-0 text-center text-gray-400">E</span>

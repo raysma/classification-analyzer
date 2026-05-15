@@ -25,6 +25,7 @@ import {
   getClassificationHistory,
   crossDivisionFloorClass,
 } from './lib/rules'
+import { classifierKey } from './lib/classifierKey'
 import { formatDivision } from './lib/formatters'
 import type { Division } from './types/index'
 
@@ -40,7 +41,7 @@ const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'classification-query-cache-v3',
+  key: 'classification-query-cache-v4',
 })
 
 function ErrorBanner({ error }: { error: unknown }) {
@@ -169,7 +170,7 @@ function AppInner() {
   }
 
   const activeClassifiers =
-    record && selectedDivision ? (record.classifiers[selectedDivision] ?? []) : []
+    record && selectedDivision ? [...(record.classifiers[selectedDivision] ?? [])] : []
 
   const rollingWindow = activeClassifiers.length > 0 ? getCurrentWindow(activeClassifiers) : null
   const currentPercent = rollingWindow?.classificationScore() ?? null
@@ -178,13 +179,11 @@ function AppInner() {
   const history = activeClassifiers.length > 0 ? getClassificationHistory(activeClassifiers) : []
   const allTimeHighPercent = history.length > 0 ? Math.max(...history.map((h) => h.percent)) : undefined
 
-  const includedIds = new Set(included.map((c) => `${c.date}:${c.classifierCode}`))
-  const droppedIds = new Set(dropped.map((c) => `${c.date}:${c.classifierCode}`))
-  const windowIds = new Set(windowScores.map((c) => `${c.date}:${c.classifierCode}`))
+  const includedIds = new Set(included.map(classifierKey))
+  const droppedIds = new Set(dropped.map(classifierKey))
+  const windowIds = new Set(windowScores.map(classifierKey))
   const excludedIds = new Set(
-    activeClassifiers
-      .filter((c) => !windowIds.has(`${c.date}:${c.classifierCode}`))
-      .map((c) => `${c.date}:${c.classifierCode}`),
+    activeClassifiers.filter((c) => !windowIds.has(classifierKey(c))).map(classifierKey),
   )
 
   return (
