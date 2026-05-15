@@ -12,7 +12,7 @@ See `CLAUDE.md` for the architecture, tech-stack non-negotiables, branch strateg
 Vite + React + TS + Tailwind + Zustand + TanStack Query + Recharts project. Vercel connected; `develop` and `main` branches both have live preview URLs.
 
 ### Phase 1 — USPSA fetch proxy + parser
-`GET /api/classification?member=<number>` returns typed JSON. Proxy fetches USPSA via ScrapingAnt (browser rendering), parses HTML with `node-html-parser`, Zod-validates the response. Handles private records, timeouts, partial-parse warnings.
+`GET /api/classification?member=<number>` returns typed JSON. Proxy fetches USPSA via Zyte (browser rendering), parses HTML with `node-html-parser`, Zod-validates the response. Handles private records, timeouts, partial-parse warnings.
 
 ### Phase 2 — Lookup UX + record display
 Member number input with inline validation, TanStack Query fetch with loading/error states, division tabs, sortable classifier history table, URL state via `URLSearchParams`.
@@ -46,4 +46,4 @@ Dark mode (light/auto/dark toggle, OS-aware, persisted), color-coded percent col
 - **Dates**: TZ-naive `YYYY-MM-DD` strings throughout `lib/`. Convert to `Date` only at chart-rendering time.
 - **Parser failure mode**: `{ ok: true; doc; warnings: string[] }` on partial parse; hard error only when zero rows parse.
 - **TanStack Query persistence**: `persistQueryClient` + localStorage, scoped to classification keys only.
-- **USPSA fetch**: via ScrapingAnt with `browser=true` to handle bot-protected, JS-rendered pages.
+- **USPSA fetch**: via Zyte with `browserHtml: true` to handle bot-protected, JS-rendered pages. Replaced ScrapingAnt (2026-05-15) after parity testing — ScrapingAnt's free-tier 1-concurrent-request cap was returning HTTP 409 on overlapping lookups in production.
