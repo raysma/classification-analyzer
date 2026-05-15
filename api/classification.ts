@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
 import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
-import { resolveScraperMode, scrape } from './_lib/scrapers.js'
+import { fetchViaZyte } from './_lib/zyteClient.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
@@ -51,10 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const mode = resolveScraperMode(process.env['SCRAPER_MODE'])
   const targetUrl = `https://uspsa.org/classification/${encodeURIComponent(member)}`
 
-  const result = await scrape(mode, targetUrl)
+  const result = await fetchViaZyte(targetUrl)
 
   if (!result.ok) {
     if (result.reason === 'not_configured') {
@@ -82,7 +81,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const html = result.html
-  res.setHeader('X-Scraper-Provider', result.provider)
 
   const parsed = parseClassificationHtml(html)
 
@@ -97,13 +95,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const totalLen = html.length
 
       console.error(
-        `[classification] parse_failed member=${hashMember(member)} provider=${result.provider} title="${pageTitle}" len=${totalLen}`,
+        `[classification] parse_failed member=${hashMember(member)} title="${pageTitle}" len=${totalLen}`,
       )
 
       let responseSnippet: string | undefined
       if (!IS_PROD) {
         const snippets: string[] = [
-          `Page title: "${pageTitle}" | total length: ${totalLen} | provider: ${result.provider}`,
+          `Page title: "${pageTitle}" | total length: ${totalLen}`,
         ]
         try {
           const { parse: parseHtml } = await import('node-html-parser')

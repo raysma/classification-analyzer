@@ -3,45 +3,27 @@ import { fetchViaZyte } from './zyteClient'
 
 const originalFetch = globalThis.fetch
 const originalKey = process.env['ZYTE_API_KEY']
-const originalDevKey = process.env['ZYTE_API_KEY_DEV']
 
 function mockFetch(impl: typeof fetch) {
   globalThis.fetch = vi.fn<typeof fetch>(impl)
 }
 
 beforeEach(() => {
-  delete process.env['ZYTE_API_KEY']
-  process.env['ZYTE_API_KEY_DEV'] = 'dev-zyte-key'
+  process.env['ZYTE_API_KEY'] = 'test-key'
 })
 
 afterEach(() => {
   globalThis.fetch = originalFetch
   if (originalKey === undefined) delete process.env['ZYTE_API_KEY']
   else process.env['ZYTE_API_KEY'] = originalKey
-  if (originalDevKey === undefined) delete process.env['ZYTE_API_KEY_DEV']
-  else process.env['ZYTE_API_KEY_DEV'] = originalDevKey
   vi.restoreAllMocks()
 })
 
 describe('fetchViaZyte', () => {
-  it('returns not_configured when neither key set', async () => {
-    delete process.env['ZYTE_API_KEY_DEV']
+  it('returns not_configured when ZYTE_API_KEY is unset', async () => {
+    delete process.env['ZYTE_API_KEY']
     const r = await fetchViaZyte('https://uspsa.org/classification/A1')
-    expect(r).toEqual({ ok: false, reason: 'not_configured', provider: 'zyte' })
-  })
-
-  it('prefers ZYTE_API_KEY over ZYTE_API_KEY_DEV', async () => {
-    process.env['ZYTE_API_KEY'] = 'prod-key'
-    const fetchSpy = vi.fn<typeof fetch>(
-      async () =>
-        new Response(JSON.stringify({ browserHtml: '<html/>', statusCode: 200 }), { status: 200 }),
-    )
-    globalThis.fetch = fetchSpy
-    await fetchViaZyte('https://uspsa.org/classification/A1')
-    const init = fetchSpy.mock.calls[0]![1]!
-    const auth = (init.headers as Record<string, string>)['Authorization']!
-    const decoded = Buffer.from(auth.replace('Basic ', ''), 'base64').toString('utf8')
-    expect(decoded).toBe('prod-key:')
+    expect(r).toEqual({ ok: false, reason: 'not_configured' })
   })
 
   it('posts JSON with browserHtml: true and url, with Basic auth', async () => {
@@ -59,6 +41,10 @@ describe('fetchViaZyte', () => {
     const headers = init?.headers as Record<string, string>
     expect(headers['Content-Type']).toBe('application/json')
     expect(headers['Authorization']).toMatch(/^Basic /)
+    const decoded = Buffer.from(headers['Authorization']!.replace('Basic ', ''), 'base64').toString(
+      'utf8',
+    )
+    expect(decoded).toBe('test-key:')
     const body = JSON.parse(String(init?.body))
     expect(body).toEqual({ url: 'https://uspsa.org/classification/A1', browserHtml: true })
   })
@@ -74,7 +60,6 @@ describe('fetchViaZyte', () => {
     if (r.ok) {
       expect(r.html).toBe('<html>ok</html>')
       expect(r.upstreamStatus).toBe(200)
-      expect(r.provider).toBe('zyte')
     }
   })
 
