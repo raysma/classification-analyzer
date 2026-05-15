@@ -31,14 +31,20 @@ export async function fetchViaScrapingAnt(targetUrl: string): Promise<ScrapeResu
       }
       console.error(`[ScrapingAnt] ${response.status}`)
       if (response.status === 401) {
-        return { ok: false, reason: 'auth', httpStatus: 401, detail, provider: 'scrapingant' }
+        return {
+          ok: false,
+          reason: 'auth',
+          httpStatus: 401,
+          ...(detail !== undefined ? { detail } : {}),
+          provider: 'scrapingant',
+        }
       }
       if (response.status === 409) {
         return {
           ok: false,
           reason: 'concurrency',
           httpStatus: 409,
-          detail,
+          ...(detail !== undefined ? { detail } : {}),
           provider: 'scrapingant',
         }
       }
@@ -46,7 +52,7 @@ export async function fetchViaScrapingAnt(targetUrl: string): Promise<ScrapeResu
         ok: false,
         reason: 'other',
         httpStatus: response.status,
-        detail,
+        ...(detail !== undefined ? { detail } : {}),
         provider: 'scrapingant',
       }
     }

@@ -4,8 +4,8 @@ import { fetchViaScrapingAnt } from './scrapingAntClient'
 const originalFetch = globalThis.fetch
 const originalKey = process.env['SCRAPINGANT_API_KEY']
 
-function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
-  globalThis.fetch = vi.fn(impl) as unknown as typeof fetch
+function mockFetch(impl: typeof fetch) {
+  globalThis.fetch = vi.fn<typeof fetch>(impl)
 }
 
 beforeEach(() => {
@@ -43,10 +43,10 @@ describe('fetchViaScrapingAnt', () => {
   })
 
   it('passes browser=true and url query params and x-api-key header', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response('<html/>', { status: 200, headers: { 'ant-status-code': '200' } }),
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () => new Response('<html/>', { status: 200, headers: { 'ant-status-code': '200' } }),
     )
-    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    globalThis.fetch = fetchSpy
     await fetchViaScrapingAnt('https://uspsa.org/classification/A1')
     const [url, init] = fetchSpy.mock.calls[0]!
     const parsed = new URL(String(url))

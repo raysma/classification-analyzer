@@ -5,8 +5,8 @@ const originalFetch = globalThis.fetch
 const originalKey = process.env['ZYTE_API_KEY']
 const originalDevKey = process.env['ZYTE_API_KEY_DEV']
 
-function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
-  globalThis.fetch = vi.fn(impl) as unknown as typeof fetch
+function mockFetch(impl: typeof fetch) {
+  globalThis.fetch = vi.fn<typeof fetch>(impl)
 }
 
 beforeEach(() => {
@@ -32,10 +32,11 @@ describe('fetchViaZyte', () => {
 
   it('prefers ZYTE_API_KEY over ZYTE_API_KEY_DEV', async () => {
     process.env['ZYTE_API_KEY'] = 'prod-key'
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ browserHtml: '<html/>', statusCode: 200 }), { status: 200 }),
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ browserHtml: '<html/>', statusCode: 200 }), { status: 200 }),
     )
-    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    globalThis.fetch = fetchSpy
     await fetchViaZyte('https://uspsa.org/classification/A1')
     const init = fetchSpy.mock.calls[0]![1]!
     const auth = (init.headers as Record<string, string>)['Authorization']!
@@ -44,12 +45,13 @@ describe('fetchViaZyte', () => {
   })
 
   it('posts JSON with browserHtml: true and url, with Basic auth', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ browserHtml: '<html>ok</html>', statusCode: 200 }), {
-        status: 200,
-      }),
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ browserHtml: '<html>ok</html>', statusCode: 200 }), {
+          status: 200,
+        }),
     )
-    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    globalThis.fetch = fetchSpy
     await fetchViaZyte('https://uspsa.org/classification/A1')
     const [url, init] = fetchSpy.mock.calls[0]!
     expect(String(url)).toBe('https://api.zyte.com/v1/extract')

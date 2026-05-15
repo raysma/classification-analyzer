@@ -42,7 +42,7 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
           ok: false,
           reason: 'auth',
           httpStatus: response.status,
-          detail,
+          ...(detail !== undefined ? { detail } : {}),
           provider: 'zyte',
         }
       }
@@ -51,7 +51,7 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
           ok: false,
           reason: 'concurrency',
           httpStatus: response.status,
-          detail,
+          ...(detail !== undefined ? { detail } : {}),
           provider: 'zyte',
         }
       }
@@ -59,7 +59,7 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
         ok: false,
         reason: 'other',
         httpStatus: response.status,
-        detail,
+        ...(detail !== undefined ? { detail } : {}),
         provider: 'zyte',
       }
     }
