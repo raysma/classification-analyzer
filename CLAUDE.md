@@ -52,7 +52,7 @@ USPSA's site does not expose a public JSON API for member classification records
 [Browser SPA] ──> [Vercel Function /api/classification]
                        │
                        ├─ validates member number (1–3 letter prefix + digits; e.g. A, TY, FY, L)
-                       ├─ fetches via ScrapingAnt (browser=true) -> full rendered USPSA page
+                       ├─ fetches via Zyte (browserHtml: true) -> full rendered USPSA page
                        ├─ parses HTML -> typed JSON (node-html-parser)
                        ├─ Zod-validates the parsed shape
                        ├─ caches by member number (CDN headers)
@@ -296,8 +296,9 @@ These have been considered and consciously skipped for v1. Don't add speculative
 ## Risk register
 
 - **USPSA HTML changes**: the parser must be defensive and is locked down by snapshot tests against committed fixtures. Plan for a single `parser.ts` with versioned fixtures and a Zod schema at the boundary.
-- **USPSA bot blocking**: the serverless function uses a polite User-Agent identifying the project. If we see rate-limiting, add Vercel KV / Upstash Redis caching with a TTL.
-- **Terms of service**: confirm `uspsa.org` ToS doesn't forbid automated retrieval before any public announcement. Add the identifying User-Agent and respect any robots.txt directive.
+- **USPSA bot blocking**: the serverless function delegates fetching to Zyte (`browserHtml: true`), which runs its own headless browser. If we see rate-limiting from Zyte's side or USPSA blocks Zyte's IP pool, add Vercel KV / Upstash Redis caching with a TTL.
+- **Scraping provider concentration**: Zyte is now the sole upstream fetch path. If Zyte goes down or hard-blocks us, the lookup feature is offline until manual paste — there is no automatic fallback. Re-evaluate adding a secondary provider only if Zyte uptime becomes a real problem.
+- **Terms of service**: confirm `uspsa.org` ToS doesn't forbid automated retrieval before any public announcement. Respect any robots.txt directive.
 - **Classification rule drift**: the April 2025 changes are recent — `src/lib/rules.ts` is the single point of change; do not duplicate threshold or flag logic in components.
 
 ## Things NOT to do
