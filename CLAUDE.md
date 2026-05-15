@@ -273,6 +273,7 @@ Real USPSA records to validate parser + UI against. Sanitize / anonymize before 
 - `A154528` — annual member, expected to have a multi-division record.
 - `A86278` — annual member.
 - `L4898` — lifetime member; verifies the `L` prefix path.
+- `L6332` — lifetime member with a long multi-division classification history; good stress test for the table, chart, and rolling-window math.
 - `A155617` — **private / restricted record**. Used to validate the parser's "record not viewable" path. The function should return a 404 with `{ error: "record not viewable" }` (or similar) and the UI should render a clear message rather than a parse error.
 
 ## Out of scope
