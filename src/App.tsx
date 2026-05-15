@@ -40,7 +40,7 @@ const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'classification-query-cache-v3',
+  key: 'classification-query-cache-v4',
 })
 
 function ErrorBanner({ error }: { error: unknown }) {
