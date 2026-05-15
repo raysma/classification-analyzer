@@ -12,7 +12,7 @@ A web app for USPSA competitors. Enter your member number to instantly see your 
 - **Classifier history table** — sortable, with flag descriptions on hover and color-coded Y/F rows
 - **Classification summary** — current class letter, percentage, all-time best, and gap to the next class
 - **Progress chart** — classification percentage plotted over time with class threshold lines; dark mode aware
-- **Class-up insights** — minimum average score required across the next 1–5 classifiers to reach the next class
+- **Class-up insights** — "Journey to" any class: pick a target (GM–D) and see the average required across the next 1–5 classifiers, with direction-aware math (minimum required when going up, maximum allowed when dropping back down)
 - **What-if simulator** — add hypothetical scores or exclude existing ones to project your classification percentage
 - **Manual paste** — paste your classifier table directly from USPSA.org when automatic lookup is unavailable
 

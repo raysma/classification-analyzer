@@ -152,7 +152,7 @@ interface ShooterRecord {
   memberNumber: string;
   name: string;
   membershipType: "Annual" | "ThreeYear" | "FiveYear" | "Lifetime" | "Unknown";
-  currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number }>>;
+  currentClasses: Partial<Record<Division, { letter: ClassLetter; percent: number; highPercent: number }>>;
   classifiers: Partial<Record<Division, Classifier[]>>;
   fetchedAt: string;       // ISO timestamp
   source: "fetch" | "paste";
@@ -177,25 +177,35 @@ Source: <https://uspsa.org/classification/about> (April 2025 system update).
   - `Y`: included in current calculated average.
   - `P`: pending the next weekly run.
 - **Permissive validity** (ported from uspsaprogress): when computing live numbers, we only exclude `I`, `Q`, `N`. `P` and `X` are included so users don't have to wait until Tuesday's stats run, and so paused-membership users can still track. Flags `S`/`M`/`E`/`F`/`A`/`Y` are honored but `E`/`F` simply reflect what our rolling window would compute anyway.
-- Retired (April 2025): `B`, `C`, `D`, `G` flags. Historical scores with these flags keep them; new logic doesn't apply them.
+- Retired (April 2025): `B`, `C`, `D`, `G` flags. Historical scores still carry them but our rolling-window math actively excludes them via `EXCLUDED_FLAGS` in `src/lib/rules.ts` — they don't count toward the current calculated average.
 - **Major-match promotions**: a Level II/III match overall result can count as a classifier when ≥3 GMs at ≥90% and ≥10 competitors in the division. 5% over current-class ceiling auto-promotes (except GM). 95% at a National = GM. We don't simulate promotions; we just display the major-match rows.
 
 ### Class-up math
 
-Given a current best-6-of-8 average `A` and target threshold `T`, compute the minimum average over the **next K classifiers** that pushes the new best-6-of-8 average to ≥T.
+`requiredAverageForTarget(scores, k, targetOverride?, currentClassOverride?)` in `src/lib/projection.ts` computes the per-classifier average needed across the **next K classifiers** to land in a target class. The function is direction-aware:
 
-The rolling window is order-dependent (each new score evicts the oldest after MRO and after sorting by date desc, then we take the best 6 of the new 8). The algorithm:
+- **Up / maintain** — find the minimum X such that the simulated best-6-of-8 average is ≥ the target's lower bound.
+- **Down** — find the maximum X such that the simulated average is < the target's upper bound (the next class's lower bound). Used when a higher-classed shooter picks a lower target from the dropdown.
+- **At-top** — target is GM and the shooter is officially classified GM; surfaces a "you're already there" state instead of a number.
+
+The rolling window is order-dependent (each new score evicts the oldest after MRO and date-desc sorting, then we take the best 6 of the new 8). The core algorithm:
 
 1. Snapshot the current window with `getCurrentWindow()`.
 2. Simulate K appends of a candidate uniform percent X.
 3. Recompute `bestSixOfRecentEight()`.
-4. Binary-search X ∈ [0, 110] for the smallest X that hits T. If even X=110 isn't enough, surface "not feasible in K classifiers".
+4. Binary-search X ∈ [0, 110] for the boundary value (smallest for up/maintain, largest for down). For up/maintain, if even X=110 isn't enough, surface "not feasible in K classifiers".
 
-We also expose: optimistic ("one big score at 110%, rest at current avg"), pessimistic ("uniform"), and a per-classifier breakdown.
+`currentClassOverride` accepts USPSA's authoritative class letter (parsed from the Classifications summary table). When supplied, the function uses it to determine direction instead of our computed rolling-window class — important for shooters promoted via major-match where the rolling window never reaches the threshold. `targetOverride` accepts the user's dropdown selection.
 
-### Next-class-to-chase
+### Default target class
 
-Borrowed UX from `uspsaprogress`: use the **all-time-best classification reached within the selected division** as the floor. If a shooter slipped from A to B in Carry Optics, the Carry Optics insight card still tells them what it takes to get back to M (the next class above their CO best), not back to A. The floor is per-division — we do not cross divisions here. USPSA's cross-division adjustment rule is already reflected in the `currentClasses` numbers we parse from the page, so no separate handling is needed.
+The class-up section's "Journey to" dropdown lets the shooter pick any target (GM–D), but it needs a sensible default to land on. Resolution order:
+
+1. **USPSA's official class letter** (from the parsed `currentClasses[division].letter`) when available — this is authoritative and captures every promotion pathway including major-match auto-promotion.
+2. **All-time-best class within the selected division** (sticky-class floor, per `uspsaprogress` UX) for paste records or when official data is missing. If a shooter slipped from A to B in Carry Optics, the Carry Optics insight still targets M (the next class above their CO best).
+3. **Trending class from the simple mean** for unclassified shooters (<4 scores) — a C-trending shooter sees what they need to reach B rather than always defaulting to D.
+
+Default target = one class above whatever the above resolves to. The floor is per-division; we don't cross divisions here. USPSA's cross-division adjustment rule is already reflected in the `currentClasses` numbers we parse, so no separate handling is needed for fetched records — for paste records we apply `crossDivisionFloorClass()` as a fallback.
 
 ### Date handling
 
