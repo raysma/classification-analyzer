@@ -169,7 +169,7 @@ function AppInner() {
   }
 
   const activeClassifiers =
-    record && selectedDivision ? (record.classifiers[selectedDivision] ?? []) : []
+    record && selectedDivision ? [...(record.classifiers[selectedDivision] ?? [])] : []
 
   const rollingWindow = activeClassifiers.length > 0 ? getCurrentWindow(activeClassifiers) : null
   const currentPercent = rollingWindow?.classificationScore() ?? null
