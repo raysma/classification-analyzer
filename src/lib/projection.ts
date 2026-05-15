@@ -12,21 +12,27 @@ import {
 } from './rules'
 
 // Lower bound percent required to ENTER each class
-const CLASS_THRESHOLDS: Record<ClassLetter, number | null> = {
+const CLASS_THRESHOLDS: Record<ClassLetter, number> = {
   GM: 95,
   M: 85,
   A: 75,
   B: 60,
   C: 40,
   D: 2,
-  U: null,
+  U: 0,
 }
 
-function nextTargetClass(currentBest: ClassLetter): ClassLetter | null {
-  const order: ClassLetter[] = ['GM', 'M', 'A', 'B', 'C', 'D', 'U']
-  const idx = order.indexOf(currentBest)
-  if (idx <= 0) return null // GM has no next
-  return order[idx - 1] ?? null
+// Lowest-to-highest. U is below D for "unclassified" ordering.
+const CLASS_ORDER: ClassLetter[] = ['U', 'D', 'C', 'B', 'A', 'M', 'GM']
+
+function classRank(c: ClassLetter): number {
+  return CLASS_ORDER.indexOf(c)
+}
+
+function classAbove(c: ClassLetter): ClassLetter | null {
+  const idx = CLASS_ORDER.indexOf(c)
+  if (idx < 0 || idx >= CLASS_ORDER.length - 1) return null
+  return CLASS_ORDER[idx + 1] ?? null
 }
 
 function simulateAppends(
@@ -51,8 +57,13 @@ function simulateAppends(
   return clone.classificationScore()
 }
 
+export type ProjectionDirection = 'up' | 'down' | 'maintain' | 'at-top'
+
 export interface RequiredAverageResult {
-  minAvgPercent: number | null
+  // For 'up' / 'maintain': minimum average per classifier to reach/keep the target class.
+  // For 'down': maximum average per classifier to drop into the target class.
+  requiredPercent: number | null
+  direction: ProjectionDirection
   feasible: boolean
   targetClass: ClassLetter
   targetThreshold: number
@@ -60,50 +71,84 @@ export interface RequiredAverageResult {
   atTop: boolean
 }
 
-export function requiredAverageToClassUp(
-  scores: ValidatedClassifier[],
-  k: number,
-): RequiredAverageResult {
+// The class a shooter is effectively at — their official sticky class if known,
+// or a best-guess trending class from the simple mean for unclassified shooters.
+function effectiveCurrentClass(scores: ValidatedClassifier[]): ClassLetter {
   const history = getClassificationHistory(scores)
   const best = allTimeBestClass(history)
+  if (best !== 'U') return best
+  if (scores.length === 0) return 'U'
+  const simpleAvg = scores.reduce((acc, s) => acc + s.percent, 0) / scores.length
+  return classFor(simpleAvg)
+}
 
-  // For unclassified shooters (no history yet — fewer than 4 valid scores),
-  // predict the class they're trending toward from the simple average of
-  // their available scores. The "next class up" from that trend is a more
-  // useful target than always defaulting to D.
-  let referenceClass: ClassLetter = best
-  if (best === 'U' && scores.length > 0) {
-    const simpleAvg = scores.reduce((acc, s) => acc + s.percent, 0) / scores.length
-    referenceClass = classFor(simpleAvg)
+export function requiredAverageForTarget(
+  scores: ValidatedClassifier[],
+  k: number,
+  targetOverride?: ClassLetter,
+  currentClassOverride?: ClassLetter,
+): RequiredAverageResult {
+  // Use the explicit current-class override when provided (typically USPSA's
+  // authoritative letter from the parsed Classifications table). Falls back
+  // to our computed effective class for paste records or anything else.
+  const current =
+    currentClassOverride && currentClassOverride !== 'U'
+      ? currentClassOverride
+      : effectiveCurrentClass(scores)
+  const history = getClassificationHistory(scores)
+  // "Officially classified GM" requires either an explicit USPSA letter or a
+  // real GM-level snapshot in our computed history — NOT just trending GM
+  // with fewer than 4 scores.
+  const officiallyClassifiedGM =
+    currentClassOverride === 'GM' || allTimeBestClass(history) === 'GM'
+
+  // Resolve target: explicit override wins, otherwise default to "next class up"
+  // from the current effective class.
+  let target: ClassLetter
+  if (targetOverride && targetOverride !== 'U') {
+    target = targetOverride
+  } else {
+    const next = classAbove(current === 'U' ? 'U' : current)
+    if (!next) {
+      // current is GM with no override — celebrate or stall depending on whether
+      // they're actually classified GM
+      return {
+        requiredPercent: null,
+        direction: 'at-top',
+        feasible: false,
+        targetClass: 'GM',
+        targetThreshold: 95,
+        scoresInWindow: 0,
+        atTop: officiallyClassifiedGM,
+      }
+    }
+    target = next
   }
 
-  const target = nextTargetClass(referenceClass === 'U' ? classFor(0) : referenceClass)
+  // Determine direction
+  const currentRank = classRank(current)
+  const targetRank = classRank(target)
+  let direction: ProjectionDirection
+  if (currentRank < targetRank) direction = 'up'
+  else if (currentRank > targetRank) direction = 'down'
+  else direction = 'maintain'
 
-  // No target means the effective class is GM. Only celebrate as "at top"
-  // if the shooter is actually classified GM, not just trending GM-level
-  // with <4 scores.
-  if (!target) {
+  // At-top special case: target GM and currently GM (only when actually classified)
+  if (target === 'GM' && direction === 'maintain' && officiallyClassifiedGM) {
     return {
-      minAvgPercent: null,
+      requiredPercent: null,
+      direction: 'at-top',
       feasible: false,
       targetClass: 'GM',
       targetThreshold: 95,
       scoresInWindow: 0,
-      atTop: best === 'GM',
+      atTop: true,
     }
   }
 
-  const threshold = CLASS_THRESHOLDS[target]
-  if (threshold === null) {
-    return {
-      minAvgPercent: null,
-      feasible: false,
-      targetClass: target,
-      targetThreshold: 95,
-      scoresInWindow: 0,
-      atTop: false,
-    }
-  }
+  const targetLowerBound = CLASS_THRESHOLDS[target]
+  const nextAbove = classAbove(target)
+  const targetUpperBound = nextAbove ? CLASS_THRESHOLDS[nextAbove] : 110
 
   const window = getCurrentWindow(scores)
   const windowScores = window.getScores()
@@ -113,63 +158,96 @@ export function requiredAverageToClassUp(
   const totalAfterK = windowScores.length + k
   if (totalAfterK < 4) {
     return {
-      minAvgPercent: null,
+      requiredPercent: null,
+      direction,
       feasible: false,
       targetClass: target,
-      targetThreshold: threshold,
+      targetThreshold: direction === 'down' ? targetUpperBound : targetLowerBound,
       scoresInWindow: windowScores.length,
       atTop: false,
     }
   }
 
-  // Current score — if already at target, no need to project
-  const currentPct = window.classificationScore()
-  if (currentPct !== null && currentPct >= threshold) {
+  const MIN_SCORE = 0
+  const MAX_SCORE = 110
+
+  if (direction === 'up' || direction === 'maintain') {
+    // Find the minimum X such that the resulting average is >= targetLowerBound.
+    const atMax = simulateAppends(window, k, MAX_SCORE)
+    if (atMax === null || atMax < targetLowerBound) {
+      return {
+        requiredPercent: MAX_SCORE,
+        direction,
+        feasible: false,
+        targetClass: target,
+        targetThreshold: targetLowerBound,
+        scoresInWindow: included.length,
+        atTop: false,
+      }
+    }
+
+    let lo = 0
+    let hi = MAX_SCORE
+    for (let iter = 0; iter < 60; iter++) {
+      const mid = (lo + hi) / 2
+      const pct = simulateAppends(window, k, mid)
+      if (pct !== null && pct >= targetLowerBound) {
+        hi = mid
+      } else {
+        lo = mid
+      }
+      if (hi - lo < 0.01) break
+    }
+
     return {
-      minAvgPercent: currentPct,
+      requiredPercent: Math.ceil(hi * 100) / 100,
+      direction,
       feasible: true,
       targetClass: target,
-      targetThreshold: threshold,
+      targetThreshold: targetLowerBound,
       scoresInWindow: included.length,
       atTop: false,
     }
   }
 
-  // Binary search for minimum uniform score needed
-  const MAX_SCORE = 110
-  const result = simulateAppends(window, k, MAX_SCORE)
-  if (result === null || result < threshold) {
+  // direction === 'down' — find max X such that resulting avg < targetUpperBound
+  const atMin = simulateAppends(window, k, MIN_SCORE)
+  if (atMin === null || atMin >= targetUpperBound) {
+    // Even shooting 0% K times can't drop the avg into target — infeasible
     return {
-      minAvgPercent: MAX_SCORE,
+      requiredPercent: MIN_SCORE,
+      direction: 'down',
       feasible: false,
       targetClass: target,
-      targetThreshold: threshold,
+      targetThreshold: targetUpperBound,
       scoresInWindow: included.length,
       atTop: false,
     }
   }
 
-  let lo = 0
+  let lo = MIN_SCORE
   let hi = MAX_SCORE
   for (let iter = 0; iter < 60; iter++) {
     const mid = (lo + hi) / 2
     const pct = simulateAppends(window, k, mid)
-    if (pct !== null && pct >= threshold) {
-      hi = mid
-    } else {
+    if (pct !== null && pct < targetUpperBound) {
       lo = mid
+    } else {
+      hi = mid
     }
     if (hi - lo < 0.01) break
   }
 
-  const minAvg = Math.ceil(hi * 100) / 100
-
   return {
-    minAvgPercent: minAvg,
-    feasible: minAvg <= MAX_SCORE,
+    requiredPercent: Math.floor(lo * 100) / 100,
+    direction: 'down',
+    feasible: true,
     targetClass: target,
-    targetThreshold: threshold,
+    targetThreshold: targetUpperBound,
     scoresInWindow: included.length,
     atTop: false,
   }
 }
+
+// Backwards-compatible alias for callers that haven't migrated yet.
+export const requiredAverageToClassUp = requiredAverageForTarget

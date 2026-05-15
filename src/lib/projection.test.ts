@@ -20,14 +20,14 @@ describe('requiredAverageToClassUp', () => {
   describe('pre-classified shooter (<4 scores)', () => {
     it('returns infeasible with null minAvgPercent for 0 scores', () => {
       const result = requiredAverageToClassUp([], 1)
-      expect(result.minAvgPercent).toBeNull()
+      expect(result.requiredPercent).toBeNull()
       expect(result.feasible).toBe(false)
     })
 
     it('returns infeasible for 2 scores + K=1 (still only 3 total)', () => {
       const scores = buildScores([70, 72])
       const result = requiredAverageToClassUp(scores, 1)
-      expect(result.minAvgPercent).toBeNull()
+      expect(result.requiredPercent).toBeNull()
       expect(result.feasible).toBe(false)
     })
 
@@ -47,8 +47,8 @@ describe('requiredAverageToClassUp', () => {
       expect(result.targetClass).toBe('A')
       expect(result.targetThreshold).toBe(75)
       if (result.feasible) {
-        expect(result.minAvgPercent).toBeGreaterThan(0)
-        expect(result.minAvgPercent).toBeLessThanOrEqual(110)
+        expect(result.requiredPercent).toBeGreaterThan(0)
+        expect(result.requiredPercent).toBeLessThanOrEqual(110)
       }
     })
   })
@@ -61,7 +61,7 @@ describe('requiredAverageToClassUp', () => {
       expect(result.targetClass).toBe('M')
       expect(result.targetThreshold).toBe(85)
       if (result.feasible) {
-        expect(result.minAvgPercent).toBeGreaterThanOrEqual(82)
+        expect(result.requiredPercent).toBeGreaterThanOrEqual(82)
       }
     })
   })
@@ -98,11 +98,11 @@ describe('requiredAverageToClassUp', () => {
     it('more classifiers generally requires lower average per classifier', () => {
       const scores = buildScores([65, 66, 67, 68, 65, 66])
       const results = [1, 2, 3, 4, 5].map((k) => requiredAverageToClassUp(scores, k))
-      const feasibleResults = results.filter((r) => r.feasible && r.minAvgPercent !== null)
+      const feasibleResults = results.filter((r) => r.feasible && r.requiredPercent !== null)
       if (feasibleResults.length >= 2) {
         for (let i = 1; i < feasibleResults.length; i++) {
-          expect(feasibleResults[i]!.minAvgPercent!).toBeLessThanOrEqual(
-            feasibleResults[i - 1]!.minAvgPercent! + 5,
+          expect(feasibleResults[i]!.requiredPercent!).toBeLessThanOrEqual(
+            feasibleResults[i - 1]!.requiredPercent! + 5,
           )
         }
       }
@@ -116,8 +116,8 @@ describe('unclassified shooter — target uses trending class', () => {
     const result = requiredAverageToClassUp(scores, 1)
     expect(result.targetClass).toBe('B')
     expect(result.targetThreshold).toBe(60)
-    expect(result.minAvgPercent).not.toBeNull()
-    expect(result.minAvgPercent).toBeGreaterThan(90) // (60*4 - 48*3 ≈ 96)
+    expect(result.requiredPercent).not.toBeNull()
+    expect(result.requiredPercent).toBeGreaterThan(90) // (60*4 - 48*3 ≈ 96)
   })
 
   it('3 scores averaging ~70% (B trend) targets A', () => {
@@ -142,16 +142,94 @@ describe('unclassified shooter — target uses trending class', () => {
     // target above GM).
     expect(result.targetClass).toBe('GM')
     expect(result.atTop).toBe(false)
-    expect(result.minAvgPercent).toBeNull()
+    expect(result.requiredPercent).toBeNull()
   })
 
   it('cards for K=1..5 show decreasing required average for C-trending shooter', () => {
     const scores = buildScores([48, 48, 48])
     const results = [1, 2, 3, 4, 5].map((k) => requiredAverageToClassUp(scores, k))
-    const values = results.map((r) => r.minAvgPercent).filter((v): v is number => v !== null)
+    const values = results.map((r) => r.requiredPercent).filter((v): v is number => v !== null)
     // Should be monotonically non-increasing
     for (let i = 1; i < values.length; i++) {
       expect(values[i]!).toBeLessThanOrEqual(values[i - 1]! + 0.01)
     }
+  })
+})
+
+describe('requiredAverageForTarget — target override (dropdown selection)', () => {
+  it('GM shooter targeting A (going down) reports max allowed average', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    const scores = buildScores([96, 96, 96, 96, 96, 96, 96, 96])
+    // K=5: shooter must average below A's upper bound (85%, M's lower bound)
+    const result = requiredAverageForTarget(scores, 5, 'A')
+    expect(result.targetClass).toBe('A')
+    expect(result.direction).toBe('down')
+    if (result.feasible) {
+      expect(result.requiredPercent).toBeLessThan(85)
+    }
+  })
+
+  it('GM shooter targeting M (going down)', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    const scores = buildScores([97, 98, 96, 97, 98, 99])
+    const result = requiredAverageForTarget(scores, 5, 'M')
+    expect(result.targetClass).toBe('M')
+    expect(result.direction).toBe('down')
+  })
+
+  it('C shooter targeting GM (going up, likely infeasible)', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    const scores = buildScores([45, 47, 50, 48, 49, 46])
+    const result = requiredAverageForTarget(scores, 1, 'GM')
+    expect(result.targetClass).toBe('GM')
+    expect(result.direction).toBe('up')
+    expect(result.feasible).toBe(false)
+  })
+
+  it('A shooter targeting A (maintain)', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    const scores = buildScores([80, 80, 80, 80, 80, 80, 80, 80])
+    const result = requiredAverageForTarget(scores, 1, 'A')
+    expect(result.targetClass).toBe('A')
+    expect(result.direction).toBe('maintain')
+  })
+
+  it('GM shooter targeting GM keeps atTop=true', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    const scores = buildScores([97, 98, 96, 97, 98, 99])
+    const result = requiredAverageForTarget(scores, 1, 'GM')
+    expect(result.atTop).toBe(true)
+    expect(result.direction).toBe('at-top')
+  })
+
+  it('infeasible down direction when even 0% cannot drop average enough', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    // 8 GM scores, K=1 — can't drop into A in just one classifier (best 6 of 8
+    // keeps the 5 highest reals)
+    const scores = buildScores([96, 96, 96, 96, 96, 96, 96, 96])
+    const result = requiredAverageForTarget(scores, 1, 'A')
+    expect(result.direction).toBe('down')
+    expect(result.feasible).toBe(false)
+  })
+})
+
+describe('requiredAverageForTarget — currentClassOverride', () => {
+  it('USPSA-GM shooter whose history does not reach 95% still treats GM as current', async () => {
+    const { requiredAverageForTarget } = await import('./projection')
+    // 8 scores at 90% — our rolling-window math says M (90), but if USPSA
+    // recorded them as GM via major-match promotion, the override wins.
+    const scores = buildScores([90, 90, 90, 90, 90, 90, 90, 90])
+
+    // Default (no override): our computed says M → picking M is maintain
+    const noOverride = requiredAverageForTarget(scores, 1, 'M')
+    expect(noOverride.direction).toBe('maintain')
+
+    // With override saying GM: picking M is now correctly direction='down'
+    const withOverride = requiredAverageForTarget(scores, 1, 'M', 'GM')
+    expect(withOverride.direction).toBe('down')
+
+    // And picking GM with override is the at-top maintain case
+    const pickGM = requiredAverageForTarget(scores, 1, 'GM', 'GM')
+    expect(pickGM.atTop).toBe(true)
   })
 })
