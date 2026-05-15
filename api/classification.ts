@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
 import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
+import { resolveScraperMode, scrape } from './_lib/scrapers.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
@@ -50,66 +51,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const apiKey = process.env['SCRAPINGANT_API_KEY'] ?? ''
-  if (!apiKey) {
-    res.status(500).json({ error: 'scraping_not_configured' })
-    return
-  }
-
+  const mode = resolveScraperMode(process.env['SCRAPER_MODE'])
   const targetUrl = `https://uspsa.org/classification/${encodeURIComponent(member)}`
-  const endpoint = new URL('https://api.scrapingant.com/v2/general')
-  endpoint.searchParams.set('url', targetUrl)
-  endpoint.searchParams.set('browser', 'true')
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 45_000)
+  const result = await scrape(mode, targetUrl)
 
-  let html: string
-  try {
-    const response = await fetch(endpoint.toString(), {
-      headers: { 'x-api-key': apiKey },
-      signal: controller.signal,
-    })
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      let detail: string | undefined
-      try {
-        detail = (await response.text()).slice(0, 500)
-      } catch {
-        // ignore
-      }
-      console.error(`[ScrapingAnt] ${response.status}`)
-      if (response.status === 401) {
-        res.status(500).json({ error: 'scraping_auth_failed' })
-        return
-      }
-      res.status(502).json({
-        error: 'fetch_failed',
-        status: response.status,
-        ...(IS_PROD ? {} : { responseSnippet: detail }),
-      })
+  if (!result.ok) {
+    if (result.reason === 'not_configured') {
+      res.status(500).json({ error: 'scraping_not_configured' })
       return
     }
-
-    const originStatus = parseInt(response.headers.get('ant-status-code') ?? '200', 10)
-    if (originStatus === 404) {
+    if (result.reason === 'upstream_404') {
       res.status(404).json({ error: 'member_not_found' })
       return
     }
-
-    html = await response.text()
-  } catch (err) {
-    clearTimeout(timeoutId)
-    if (err instanceof Error && err.name === 'AbortError') {
+    if (result.reason === 'auth') {
+      res.status(500).json({ error: 'scraping_auth_failed' })
+      return
+    }
+    if (result.reason === 'timeout') {
       res.status(504).json({ error: 'upstream_timeout' })
       return
     }
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[classification] fetch error:', message)
-    res.status(502).json({ error: 'fetch_failed' })
+    res.status(502).json({
+      error: 'fetch_failed',
+      ...(result.httpStatus ? { status: result.httpStatus } : {}),
+      ...(IS_PROD ? {} : result.detail ? { responseSnippet: result.detail } : {}),
+    })
     return
   }
+
+  const html = result.html
+  res.setHeader('X-Scraper-Provider', result.provider)
 
   const parsed = parseClassificationHtml(html)
 
@@ -123,12 +96,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
       const totalLen = html.length
 
-      console.error(`[classification] parse_failed member=${hashMember(member)} title="${pageTitle}" len=${totalLen}`)
+      console.error(
+        `[classification] parse_failed member=${hashMember(member)} provider=${result.provider} title="${pageTitle}" len=${totalLen}`,
+      )
 
       let responseSnippet: string | undefined
       if (!IS_PROD) {
         const snippets: string[] = [
-          `Page title: "${pageTitle}" | total length: ${totalLen}`,
+          `Page title: "${pageTitle}" | total length: ${totalLen} | provider: ${result.provider}`,
         ]
         try {
           const { parse: parseHtml } = await import('node-html-parser')
@@ -138,23 +113,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const firstDivLink = divLinks[0]
           snippets.push(
             `\n--- DOM SELECTOR RESULTS ---` +
-            `\na.divisionClick count: ${divLinks.length}` +
-            `\nth[scope="row"] count: ${memberThs.length}` +
-            (firstDivLink ? `\nfirst divisionClick data-division="${firstDivLink.getAttribute('data-division')}"` : '')
+              `\na.divisionClick count: ${divLinks.length}` +
+              `\nth[scope="row"] count: ${memberThs.length}` +
+              (firstDivLink
+                ? `\nfirst divisionClick data-division="${firstDivLink.getAttribute('data-division')}"`
+                : ''),
           )
         } catch (e) {
           snippets.push(`\n--- DOM parse error: ${e} ---`)
         }
         const classifierScoresIdx = html.toLowerCase().indexOf('classifier scores')
         if (classifierScoresIdx >= 0) {
-          snippets.push(`\n--- "Classifier Scores" at offset ${classifierScoresIdx} ---\n${html.slice(classifierScoresIdx, classifierScoresIdx + 3000)}`)
+          snippets.push(
+            `\n--- "Classifier Scores" at offset ${classifierScoresIdx} ---\n${html.slice(classifierScoresIdx, classifierScoresIdx + 3000)}`,
+          )
         } else {
           snippets.push('\n--- "Classifier Scores" NOT FOUND ---')
         }
         responseSnippet = snippets.join('\n')
       }
 
-      res.status(502).json({ error: 'parse_failed', ...(responseSnippet ? { responseSnippet } : {}) })
+      res
+        .status(502)
+        .json({ error: 'parse_failed', ...(responseSnippet ? { responseSnippet } : {}) })
       return
     }
     res.status(502).json({ error: parsed.error })
