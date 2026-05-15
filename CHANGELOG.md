@@ -2,10 +2,6 @@
 
 ## 2026-05-15
 
-### Infrastructure
-
-- **Switched scraping provider from ScrapingAnt to Zyte.** ScrapingAnt's free-tier 1-concurrent-request cap was returning HTTP 409 whenever two lookups overlapped. Zyte's browser rendering gave clean parity across all reference records, so we cut over completely rather than running a fallback. Same shape on the wire; users should see fewer transient failures during busy periods. The proxy reads `ZYTE_API_KEY` from the Vercel environment (Production key in Production, Dev key in Preview/Development).
-
 ### New features
 
 - **"Journey to" class picker**: the class-up section now lets you pick any target class (GM–D) from a dropdown instead of always defaulting to the next class above. GMs can pick a lower class to see *exactly how poorly they'd have to shoot* over their next 1–5 classifiers to drop into it — math is direction-aware (minimum required for going up, maximum allowed for going down). Down-direction cards are tinted indigo and tagged with a `↓` on the label row so the percentage stays compact on narrow mobile screens.
