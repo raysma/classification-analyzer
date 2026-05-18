@@ -205,6 +205,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  if (parsed.warnings.length > 0) {
+    console.warn(
+      `[classification] ${parsed.warnings.length} warning(s) for member=${hashMember(member)}: ${parsed.warnings.slice(0, 5).join(' | ')}`,
+    )
+    const unknownFlags = new Set<string>()
+    for (const w of parsed.warnings) {
+      const m = /^Unrecognized flag "([^"]*)"/.exec(w)
+      if (m && m[1] !== undefined) unknownFlags.add(m[1])
+    }
+    if (unknownFlags.size > 0) {
+      console.warn(`[classification] FLAGS=[${[...unknownFlags].join(',')}]`)
+    }
+  }
+
   res.setHeader('Cache-Control', 'private, max-age=0, s-maxage=900, stale-while-revalidate=3600')
   res.status(200).json({ ...validated.data, warnings: parsed.warnings })
 }
