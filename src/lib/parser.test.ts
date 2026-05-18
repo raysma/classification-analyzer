@@ -130,6 +130,16 @@ describe('parseClassificationHtml', () => {
     })
   })
 
+  describe('non-existent member', () => {
+    it('returns ok:false with member_not_found when USPSA shows the "Oops!" page', () => {
+      const html = `<html><head><title>Classifier Lookup - USPSA</title></head><body><h1>Oops! Member number L12332424 not found</h1></body></html>`
+      const result = parseClassificationHtml(html)
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.error).toBe('member_not_found')
+    })
+  })
+
   describe('edge cases', () => {
     it('returns ok:false for html with no division links and no member info', () => {
       const html = `<html><body><p>Some unrelated page content.</p></body></html>`

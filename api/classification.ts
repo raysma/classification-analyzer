@@ -130,6 +130,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(404).json({ error: 'record_not_viewable' })
       return
     }
+    if (parsed.error === 'member_not_found') {
+      res.status(404).json({ error: 'member_not_found' })
+      return
+    }
     if (parsed.error === 'parse_failed') {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
