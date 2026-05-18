@@ -15,7 +15,7 @@ export type ScrapeResult =
       detail?: string
     }
 
-const ZYTE_TIMEOUT_MS = 45_000
+export const ZYTE_TIMEOUT_MS = 45_000
 const ZYTE_ENDPOINT = 'https://api.zyte.com/v1/extract'
 
 export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
@@ -27,6 +27,7 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
   const auth = Buffer.from(`${apiKey}:`).toString('base64')
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), ZYTE_TIMEOUT_MS)
+  const startedAt = Date.now()
 
   try {
     const response = await fetch(ZYTE_ENDPOINT, {
@@ -39,6 +40,7 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
       signal: controller.signal,
     })
     clearTimeout(timeoutId)
+    const elapsedMs = Date.now() - startedAt
 
     if (!response.ok) {
       let detail: string | undefined
@@ -47,7 +49,7 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
       } catch {
         // ignore
       }
-      console.error(`[Zyte] ${response.status}`)
+      console.error(`[Zyte] ${response.status} (${elapsedMs}ms)`)
       if (response.status === 401 || response.status === 403) {
         return {
           ok: false,
@@ -87,14 +89,17 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
       }
     }
 
+    console.log(`[Zyte] ok ${upstreamStatus} (${elapsedMs}ms, ${html.length}b)`)
     return { ok: true, html, upstreamStatus }
   } catch (err) {
     clearTimeout(timeoutId)
+    const elapsedMs = Date.now() - startedAt
     if (err instanceof Error && err.name === 'AbortError') {
+      console.error(`[Zyte] timeout after ${elapsedMs}ms`)
       return { ok: false, reason: 'timeout' }
     }
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[Zyte] fetch error:', message)
+    console.error(`[Zyte] fetch error (${elapsedMs}ms):`, message)
     return { ok: false, reason: 'other', detail: message }
   }
 }

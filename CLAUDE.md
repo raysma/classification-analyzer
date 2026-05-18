@@ -287,7 +287,6 @@ Real USPSA records to validate parser + UI against. Sanitize / anonymize before 
 
 These have been considered and consciously skipped for v1. Don't add speculatively.
 
-- **Sentry / external error monitoring.** Vercel function logs are sufficient.
 - **Authenticated lookup of one's own private record.** Out of scope; users with restricted records see the "record not viewable" state.
 - **Code coverage thresholds in CI.** Test the right things, not a number.
 - **Server-side persistence of any kind** (database, Vercel KV, Upstash). Add only if USPSA rate-limits us.
