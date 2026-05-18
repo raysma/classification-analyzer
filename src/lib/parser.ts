@@ -92,6 +92,8 @@ const VALID_FLAGS = new Set(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', '
 const RESTRICTED_SELECTORS = ['.record-restricted', '#record-restricted']
 const RESTRICTED_TEXTS = ['not available for public viewing', 'record not viewable', 'private record']
 
+const MEMBER_NOT_FOUND_RE = /Member\s+number\s+\S+\s+not\s+found/i
+
 export type ParseResult =
   | { ok: true; doc: ShooterRecord; warnings: string[] }
   | { ok: false; error: string }
@@ -144,12 +146,21 @@ function isRestrictedRecord(document: NHElement): boolean {
   return RESTRICTED_TEXTS.some((t) => bodyText.includes(t))
 }
 
+function isMemberNotFound(document: NHElement): boolean {
+  const bodyText = document.querySelector('body')?.textContent ?? ''
+  return MEMBER_NOT_FOUND_RE.test(bodyText)
+}
+
 export function parseClassificationHtml(html: string): ParseResult {
   const document = parse(html)
   const warnings: string[] = []
 
   if (isRestrictedRecord(document)) {
     return { ok: false, error: 'record_not_viewable' }
+  }
+
+  if (isMemberNotFound(document)) {
+    return { ok: false, error: 'member_not_found' }
   }
 
   // --- Member info ---

@@ -1,11 +1,38 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
+import * as Sentry from '@sentry/node'
 import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
-import { fetchViaZyte } from './_lib/zyteClient.js'
+import { fetchViaZyte, ZYTE_TIMEOUT_MS } from './_lib/zyteClient.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
+
+const SENTRY_DSN = process.env['SENTRY_DSN']
+if (SENTRY_DSN) {
+  const release = process.env['VERCEL_GIT_COMMIT_SHA']
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: 0,
+    skipOpenTelemetrySetup: true,
+    environment: process.env['VERCEL_ENV'] ?? 'development',
+    ...(release ? { release } : {}),
+  })
+}
+
+async function reportFailure(
+  reason: string,
+  message: string,
+  context: Record<string, unknown>,
+): Promise<void> {
+  if (!SENTRY_DSN) return
+  Sentry.withScope((scope) => {
+    scope.setTag('reason', reason)
+    scope.setContext('classification', context)
+    Sentry.captureMessage(`${reason} — ${message}`, 'error')
+  })
+  await Sentry.flush(2000).catch(() => {})
+}
 
 // In-memory rate limit: 20 requests per IP per 60-second window.
 // Imperfect across cold-start instances, but catches burst abuse on warm functions.
@@ -65,13 +92,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
     if (result.reason === 'auth') {
+      await reportFailure('zyte_auth_failed', `zyte ${result.httpStatus ?? '?'}`, {
+        member: hashMember(member),
+        httpStatus: result.httpStatus,
+        detail: result.detail?.slice(0, 500),
+      })
       res.status(500).json({ error: 'scraping_auth_failed' })
       return
     }
     if (result.reason === 'timeout') {
+      await reportFailure('upstream_timeout', `zyte timeout after ${ZYTE_TIMEOUT_MS}ms`, {
+        member: hashMember(member),
+      })
       res.status(504).json({ error: 'upstream_timeout' })
       return
     }
+    await reportFailure('fetch_failed', `zyte ${result.reason} ${result.httpStatus ?? ''}`.trim(), {
+      member: hashMember(member),
+      zyteReason: result.reason,
+      httpStatus: result.httpStatus,
+      detail: result.detail?.slice(0, 500),
+    })
     res.status(502).json({
       error: 'fetch_failed',
       ...(result.httpStatus ? { status: result.httpStatus } : {}),
@@ -89,6 +130,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(404).json({ error: 'record_not_viewable' })
       return
     }
+    if (parsed.error === 'member_not_found') {
+      res.status(404).json({ error: 'member_not_found' })
+      return
+    }
     if (parsed.error === 'parse_failed') {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
       const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
@@ -97,6 +142,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error(
         `[classification] parse_failed member=${hashMember(member)} title="${pageTitle}" len=${totalLen}`,
       )
+
+      await reportFailure('parse_failed', `title="${pageTitle}" len=${totalLen}`, {
+        member: hashMember(member),
+        pageTitle,
+        htmlLength: totalLen,
+      })
 
       let responseSnippet: string | undefined
       if (!IS_PROD) {
@@ -143,11 +194,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const validated = ShooterRecordSchema.safeParse(parsed.doc)
   if (!validated.success) {
     console.error('[classification] zod validation failed:', validated.error.message)
+    await reportFailure('validation_failed', validated.error.message, {
+      member: hashMember(member),
+      issues: validated.error.issues.slice(0, 10),
+    })
     res.status(502).json({
       error: 'validation_failed',
       ...(IS_PROD ? {} : { issues: validated.error.issues }),
     })
     return
+  }
+
+  if (parsed.warnings.length > 0) {
+    console.warn(
+      `[classification] ${parsed.warnings.length} warning(s) for member=${hashMember(member)}: ${parsed.warnings.slice(0, 5).join(' | ')}`,
+    )
+    const unknownFlags = new Set<string>()
+    for (const w of parsed.warnings) {
+      const m = /^Unrecognized flag "([^"]*)"/.exec(w)
+      if (m && m[1] !== undefined) unknownFlags.add(m[1])
+    }
+    if (unknownFlags.size > 0) {
+      console.warn(`[classification] FLAGS=[${[...unknownFlags].join(',')}]`)
+    }
   }
 
   res.setHeader('Cache-Control', 'private, max-age=0, s-maxage=900, stale-while-revalidate=3600')

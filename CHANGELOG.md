@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-18
+
+### Bug fixes
+
+- **Better handling of non-existent member numbers**: unknown USPSA IDs now show "No member found with that number" instead of a generic upstream error.
+
 ## 2026-05-15
 
 ### New features
