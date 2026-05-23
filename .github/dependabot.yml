@@ -7,9 +7,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      npm-dependencies:
+      npm-minor-patch:
         patterns:
           - "*"
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
