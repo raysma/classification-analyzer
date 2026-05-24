@@ -7,9 +7,6 @@ struct ClassifierTableView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Scores")
-                .font(.headline)
-
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                 GridRow {
                     Text("Date").gridColumnAlignment(.leading)

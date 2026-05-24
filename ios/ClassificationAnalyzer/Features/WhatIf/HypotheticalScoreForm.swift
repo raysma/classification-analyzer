@@ -43,7 +43,6 @@ struct HypotheticalScoreForm: View {
 
                 Button("Add") { handleAdd() }
                     .buttonStyle(.borderedProminent)
-                    .tint(.indigo)
                     .disabled(!canAdd)
 
                 Spacer()

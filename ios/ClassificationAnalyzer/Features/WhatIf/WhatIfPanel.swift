@@ -63,13 +63,11 @@ struct WhatIfPanel: View {
         .refinedSurface()
     }
 
+    @ViewBuilder
     private var header: some View {
-        HStack {
-            Text("What-if simulator — \(division.displayName)")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Spacer()
-            if hasChanges {
+        if hasChanges {
+            HStack {
+                Spacer()
                 Button("Reset") { appModel.resetScenario() }
                     .font(.caption)
                     .buttonStyle(.plain)
