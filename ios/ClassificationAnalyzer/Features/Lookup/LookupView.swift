@@ -21,14 +21,24 @@ struct LookupView: View {
                     .submitLabel(.search)
                     .focused($memberFieldFocused)
                     .onSubmit { triggerLookup() }
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") { memberFieldFocused = false }
+                        }
+                    }
 
                 Button {
                     triggerLookup()
                 } label: {
-                    if appModel.isLoading {
-                        ProgressView().controlSize(.small)
-                    } else {
+                    ZStack {
                         Text("Look up")
+                            .opacity(appModel.isLoading ? 0 : 1)
+                        if appModel.isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(.white)
+                        }
                     }
                 }
                 .buttonStyle(.borderedProminent)

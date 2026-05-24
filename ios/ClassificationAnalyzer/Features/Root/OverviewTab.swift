@@ -48,6 +48,7 @@ struct OverviewTab: View {
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Classification Analyzer")
             .navigationBarTitleDisplayMode(.inline)
         }

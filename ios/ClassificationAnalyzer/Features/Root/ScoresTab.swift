@@ -25,6 +25,7 @@ struct ScoresTab: View {
                         )
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle("Scores")
             .navigationBarTitleDisplayMode(.inline)

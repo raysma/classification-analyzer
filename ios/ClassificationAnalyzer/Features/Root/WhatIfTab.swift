@@ -24,6 +24,7 @@ struct WhatIfTab: View {
                         )
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle("What-If")
             .navigationBarTitleDisplayMode(.inline)

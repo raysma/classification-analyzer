@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import USPSADomain
 
 struct RootView: View {
@@ -17,6 +18,15 @@ struct RootView: View {
             ScoresTab()
                 .tabItem { Label("Scores", systemImage: "list.bullet") }
                 .tag(2)
+        }
+        .onChange(of: selectedTab) { _, _ in
+            // Keyboard persists across tab switches in SwiftUI's TabView; the
+            // previously-focused TextField stays focused but invisible, which
+            // strands the keyboard. Force-dismiss on every switch.
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder),
+                to: nil, from: nil, for: nil
+            )
         }
     }
 }

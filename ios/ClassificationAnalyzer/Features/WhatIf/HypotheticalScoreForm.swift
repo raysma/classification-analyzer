@@ -4,6 +4,7 @@ struct HypotheticalScoreForm: View {
     @Environment(AppModel.self) private var appModel
     @State private var input: String = ""
     @State private var errorMessage: String?
+    @FocusState private var inputFocused: Bool
 
     private var isFull: Bool {
         appModel.hypotheticalScores.count >= 8
@@ -25,7 +26,14 @@ struct HypotheticalScoreForm: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 120)
                     .disabled(isFull)
+                    .focused($inputFocused)
                     .onChange(of: input) { _, _ in errorMessage = nil }
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") { inputFocused = false }
+                        }
+                    }
 
                 Button("Add") { handleAdd() }
                     .buttonStyle(.borderedProminent)
@@ -57,5 +65,6 @@ struct HypotheticalScoreForm: View {
         errorMessage = nil
         appModel.addHypothetical(percent: value)
         input = ""
+        inputFocused = false
     }
 }
