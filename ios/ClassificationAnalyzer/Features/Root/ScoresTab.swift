@@ -26,12 +26,10 @@ struct ScoresTab: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Scores")
+            .navigationTitle(appModel.selectedDivision?.displayName ?? "Scores")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    DivisionMenuButton(fallbackTitle: "Scores")
-                }
+            .toolbarTitleMenu {
+                DivisionMenuItems()
             }
         }
     }
