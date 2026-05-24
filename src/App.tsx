@@ -409,7 +409,6 @@ function AppInner() {
               <WhatIfPanel
                 windowScores={windowScores}
                 currentPercent={currentPercent}
-                division={selectedDivision}
               />
             )}
 
