@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import USPSADomain
 
 struct WhatIfTab: View {
@@ -8,19 +9,28 @@ struct WhatIfTab: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if let division = appModel.selectedDivision, appModel.effectiveRecord != nil {
-                    WhatIfPanel(
-                        windowScores: appModel.activeClassifiers,
-                        currentPercent: appModel.projectedPercent,
-                        division: division
-                    )
-                    .padding()
-                } else {
-                    EmptyStateView(
-                        systemImage: "wand.and.stars",
-                        message: "Look up a member to use the what-if simulator.",
-                        actionTitle: "Go to Lookup",
-                        action: { selectedTab = 0 }
+                Group {
+                    if let division = appModel.selectedDivision, appModel.effectiveRecord != nil {
+                        WhatIfPanel(
+                            windowScores: appModel.activeClassifiers,
+                            currentPercent: appModel.projectedPercent,
+                            division: division
+                        )
+                        .padding()
+                    } else {
+                        EmptyStateView(
+                            systemImage: "wand.and.stars",
+                            message: "Look up a member to use the what-if simulator.",
+                            actionTitle: "Go to Lookup",
+                            action: { selectedTab = 0 }
+                        )
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
                     )
                 }
             }

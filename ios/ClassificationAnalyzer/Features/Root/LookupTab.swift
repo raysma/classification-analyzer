@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import USPSAClient
 import USPSADomain
 
@@ -22,6 +23,8 @@ struct LookupTab: View {
                     // numbers persisted to UserDefaults, tap to re-fetch.
                 }
                 .padding()
+                .contentShape(Rectangle())
+                .onTapGesture { dismissKeyboard() }
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Lookup")
@@ -59,11 +62,24 @@ struct LookupTab: View {
                         }
                     }
 
-                Button(appModel.isLoading ? "Looking up…" : "Look up") {
+                Button {
                     triggerLookup()
+                } label: {
+                    ZStack {
+                        // Hidden "Look up" reserves consistent button width
+                        // across the loading / idle states so the TextField
+                        // next to it doesn't grow and shrink.
+                        Text("Look up").opacity(0)
+                        if appModel.isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(.white)
+                        } else {
+                            Text("Look up")
+                        }
+                    }
                 }
                 .buttonStyle(.borderedProminent)
-                .frame(minWidth: 90)
             }
 
             if let error = appModel.lastError {
@@ -103,6 +119,14 @@ struct LookupTab: View {
         }
         .buttonStyle(.plain)
         .refinedSurface()
+    }
+
+    private func dismissKeyboard() {
+        memberFieldFocused = false
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
     }
 
     private func triggerLookup() {

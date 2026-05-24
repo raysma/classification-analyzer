@@ -10,10 +10,6 @@ struct HypotheticalScoreForm: View {
         appModel.hypotheticalScores.count >= 8
     }
 
-    private var canAdd: Bool {
-        !isFull && !input.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Add hypothetical score (max 8)")
@@ -43,7 +39,6 @@ struct HypotheticalScoreForm: View {
 
                 Button("Add") { handleAdd() }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!canAdd)
 
                 Spacer()
             }
@@ -62,7 +57,16 @@ struct HypotheticalScoreForm: View {
     }
 
     private func handleAdd() {
+        // Same pattern as the Look-up button: never .disabled(), guard in
+        // the handler. Dark mode + iOS 26 .borderedProminent disabled state
+        // is unreadable, so the Add button stays visually enabled and
+        // refuse-to-act here when there's nothing to add.
+        guard !isFull else { return }
         let trimmed = input.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            inputFocused = true
+            return
+        }
         guard let value = Double(trimmed), value >= 0, value <= 110 else {
             errorMessage = "Enter a percent between 0 and 110"
             return
