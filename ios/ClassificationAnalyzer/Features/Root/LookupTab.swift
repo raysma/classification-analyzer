@@ -16,7 +16,7 @@ struct LookupTab: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    lookupCard(model: model)
+                    lookupCard(memberNumber: $model.memberNumber)
                     pasteCard
                     // Recents list lands here in a follow-up — last N member
                     // numbers persisted to UserDefaults, tap to re-fetch.
@@ -33,13 +33,13 @@ struct LookupTab: View {
         }
     }
 
-    private func lookupCard(model: AppModel) -> some View {
+    private func lookupCard(memberNumber: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Member number")
                 .font(.headline)
 
             HStack {
-                TextField("e.g. A12345", text: $model.memberNumber)
+                TextField("e.g. A12345", text: memberNumber)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .textFieldStyle(.roundedBorder)
