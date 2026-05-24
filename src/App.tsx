@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ValidatedShooterRecord } from './lib/validation'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useQuery } from '@tanstack/react-query'
@@ -18,7 +19,7 @@ import WhatIfPanel from './components/whatif/WhatIfPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
-import { readUrlState, useUrlSync } from './lib/urlState'
+import { readUrlState, useUrlSync, type Tab } from './lib/urlState'
 import {
   getCurrentWindow,
   bestSixOfRecentEight,
@@ -43,6 +44,80 @@ const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   key: 'classification-query-cache-v4',
 })
+
+function RecordBarHeader({
+  record,
+  expanded,
+  onToggle,
+}: {
+  record: ValidatedShooterRecord
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-baseline gap-3 flex-wrap min-w-0">
+        <span className="text-lg font-semibold truncate">{record.name}</span>
+        {record.source !== 'paste' && (
+          <>
+            <span className="font-mono text-sm text-gray-600 dark:text-gray-300">
+              {record.memberNumber}
+            </span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {record.membershipType}
+            </span>
+          </>
+        )}
+        {record.source === 'paste' && (
+          <span className="rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-0.5 text-xs font-medium">
+            Manual paste
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls="lookup-section"
+        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+      >
+        {expanded ? 'Done' : 'Change'}
+      </button>
+    </div>
+  )
+}
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'whatif', label: 'What-If' },
+  { id: 'scores', label: 'Scores' },
+]
+
+function TabNav({ currentTab, onChange }: { currentTab: Tab; onChange: (t: Tab) => void }) {
+  return (
+    <nav role="tablist" aria-label="Sections" className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+      {TABS.map((tab) => {
+        const isActive = currentTab === tab.id
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tab.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+              isActive
+                ? 'border-blue-600 text-gray-900 dark:text-gray-100'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            {tab.label}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
 
 function ErrorBanner({ error }: { error: unknown }) {
   if (!error) return null
@@ -108,6 +183,8 @@ function ErrorBanner({ error }: { error: unknown }) {
 
 function AppInner() {
   const [showChangelog, setShowChangelog] = useState(false)
+  const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
+  const [lookupExpanded, setLookupExpanded] = useState(true)
 
   const {
     memberNumber,
@@ -129,7 +206,7 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useUrlSync(memberNumber, selectedDivision)
+  useUrlSync(memberNumber, selectedDivision, tab)
 
   const { data, isFetching, error } = useQuery({
     queryKey: ['classification', memberNumber],
@@ -144,6 +221,12 @@ function AppInner() {
 
   // Fetched record takes priority over pasted record
   const record = data?.record ?? pastedRecord ?? null
+
+  // Once we have a record, collapse the lookup form so it doesn't dominate
+  // vertical space. User reopens with the Change button.
+  useEffect(() => {
+    if (record) setLookupExpanded(false)
+  }, [record])
 
   // Auto-select first division when data arrives
   useEffect(() => {
@@ -201,18 +284,54 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+        {record ? (
+          <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+            <RecordBarHeader
+              record={record}
+              expanded={lookupExpanded}
+              onToggle={() => setLookupExpanded((v) => !v)}
+            />
+            <div
+              id="lookup-section"
+              className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+                lookupExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+              }`}
+              aria-hidden={!lookupExpanded}
+            >
+              <div className="overflow-hidden">
+                <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-4 py-4 space-y-6">
+                  <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
 
-        {isFetching && !data && memberNumber && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            Fetching {memberNumber} from USPSA…
-          </p>
+                  {isFetching && !data && memberNumber && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Fetching {memberNumber} from USPSA…
+                    </p>
+                  )}
+                  <ManualPastePanel />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+
+            {isFetching && !data && memberNumber && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Fetching {memberNumber} from USPSA…
+              </p>
+            )}
+            <ManualPastePanel />
+          </div>
         )}
-        <ManualPastePanel />
 
         {warnings.length > 0 && (
           <div
@@ -237,22 +356,6 @@ function AppInner() {
 
         {record && (
           <div className="space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div>
-                <p className="text-lg font-semibold">{record.name}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {record.source === 'paste'
-                    ? null
-                    : `${record.memberNumber} · ${record.membershipType}`}
-                </p>
-              </div>
-              {record.source === 'paste' && (
-                <span className="rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-0.5 text-xs font-medium">
-                  Manual paste
-                </span>
-              )}
-            </div>
-
             <DivisionTabs
               divisions={divisionKeys}
               scoreCounts={scoreCounts}
@@ -260,13 +363,15 @@ function AppInner() {
               onSelect={(d) => setSelectedDivision(d)}
             />
 
-            {selectedDivision && activeClassifiers.length === 0 && (
+            <TabNav currentTab={tab} onChange={setTab} />
+
+            {tab === 'overview' && selectedDivision && activeClassifiers.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 No classifiers found for {formatDivision(selectedDivision)}.
               </p>
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
               <SummaryCard
                 projectedPercent={currentPercent}
                 windowSize={windowScores.length}
@@ -279,11 +384,11 @@ function AppInner() {
               />
             )}
 
-            {selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
               <ProgressChart classifiers={activeClassifiers} history={history} />
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
               <ClassUpInsights
                 classifiers={activeClassifiers}
                 division={selectedDivision}
@@ -293,14 +398,14 @@ function AppInner() {
               />
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
               <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
                 Only {activeClassifiers.length} of 4 classifiers in {formatDivision(selectedDivision)} — needs{' '}
                 {4 - activeClassifiers.length} more for an initial classification.
               </p>
             )}
 
-            {selectedDivision && windowScores.length > 0 && (
+            {tab === 'whatif' && selectedDivision && windowScores.length > 0 && (
               <WhatIfPanel
                 windowScores={windowScores}
                 currentPercent={currentPercent}
@@ -308,13 +413,25 @@ function AppInner() {
               />
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && (
+            {tab === 'whatif' && selectedDivision && windowScores.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No scores in window for {formatDivision(selectedDivision)} — nothing to simulate.
+              </p>
+            )}
+
+            {tab === 'scores' && selectedDivision && activeClassifiers.length > 0 && (
               <ClassifierTable
                 classifiers={activeClassifiers}
                 highlightedIds={includedIds}
                 droppedIds={droppedIds}
                 excludedIds={excludedIds}
               />
+            )}
+
+            {tab === 'scores' && selectedDivision && activeClassifiers.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No classifiers found for {formatDivision(selectedDivision)}.
+              </p>
             )}
           </div>
         )}
