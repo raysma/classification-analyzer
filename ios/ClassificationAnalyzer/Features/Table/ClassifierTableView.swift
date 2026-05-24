@@ -1,5 +1,6 @@
 import SwiftUI
 import USPSADomain
+import USPSARules
 
 struct ClassifierTableView: View {
     let classifiers: [Classifier]
@@ -28,10 +29,12 @@ struct ClassifierTableView: View {
                         Text(c.classifierCode)
                             .font(.caption.monospaced())
                         Text(String(format: "%.2f", c.percent))
-                            .font(.caption.monospaced())
+                            .font(.caption.monospaced().weight(.medium))
+                            .foregroundStyle(percentColor(for: classFor(c.percent)))
                             .gridColumnAlignment(.trailing)
                         Text(c.flag.rawValue.isEmpty ? "—" : c.flag.rawValue)
                             .font(.caption.monospaced())
+                            .foregroundStyle(flagColor(for: c.flag))
                             .gridColumnAlignment(.center)
                     }
                 }
@@ -40,5 +43,28 @@ struct ClassifierTableView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .refinedSurface()
+    }
+
+    private func percentColor(for letter: ClassLetter) -> Color {
+        switch letter {
+        case .gm: return .yellow
+        case .m: return .purple
+        case .a: return .blue
+        case .b: return .green
+        case .c: return .orange
+        case .d: return .red
+        case .u: return .gray
+        }
+    }
+
+    private func flagColor(for flag: Flag) -> Color {
+        switch flag {
+        case .y: return .green
+        case .f: return .orange
+        case .m, .s: return .blue
+        case .p: return .purple
+        case .a, .i, .x, .q, .n: return .red
+        case .e, .b, .c, .d, .g, .none: return .secondary
+        }
     }
 }

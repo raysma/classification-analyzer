@@ -4,6 +4,7 @@ import USPSAClient
 struct LookupView: View {
     @Environment(AppModel.self) private var appModel
     @State private var showingPasteSheet: Bool = false
+    @FocusState private var memberFieldFocused: Bool
 
     var body: some View {
         @Bindable var model = appModel
@@ -18,10 +19,11 @@ struct LookupView: View {
                     .autocorrectionDisabled()
                     .textFieldStyle(.roundedBorder)
                     .submitLabel(.search)
-                    .onSubmit { Task { await appModel.lookup() } }
+                    .focused($memberFieldFocused)
+                    .onSubmit { triggerLookup() }
 
                 Button {
-                    Task { await appModel.lookup() }
+                    triggerLookup()
                 } label: {
                     if appModel.isLoading {
                         ProgressView().controlSize(.small)
@@ -43,6 +45,7 @@ struct LookupView: View {
             }
 
             Button {
+                memberFieldFocused = false
                 showingPasteSheet = true
             } label: {
                 HStack(spacing: 4) {
@@ -61,5 +64,10 @@ struct LookupView: View {
             ManualPasteSheet()
                 .environment(appModel)
         }
+    }
+
+    private func triggerLookup() {
+        memberFieldFocused = false
+        Task { await appModel.lookup() }
     }
 }

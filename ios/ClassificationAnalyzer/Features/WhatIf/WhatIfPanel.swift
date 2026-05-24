@@ -8,6 +8,7 @@ struct WhatIfPanel: View {
     let division: Division
 
     @Environment(AppModel.self) private var appModel
+    @State private var showPushedOut: Bool = false
 
     private var scenarioWindow: RollingWindow {
         getCurrentWindow(appModel.buildScenarioScores(windowScores: windowScores))
@@ -145,8 +146,28 @@ struct WhatIfPanel: View {
                 row(for: s)
             }
 
-            ForEach(pushedOut, id: \.self) { s in
-                pushedOutRow(s)
+            if !pushedOut.isEmpty {
+                Button {
+                    showPushedOut.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: showPushedOut ? "chevron.down" : "chevron.right")
+                            .font(.caption2)
+                        Text(showPushedOut
+                            ? "Hide \(pushedOut.count) pushed-out"
+                            : "Show \(pushedOut.count) pushed-out")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+
+                if showPushedOut {
+                    ForEach(pushedOut, id: \.self) { s in
+                        pushedOutRow(s)
+                    }
+                }
             }
         }
     }
