@@ -3,6 +3,7 @@ import USPSADomain
 
 struct WhatIfTab: View {
     @Environment(AppModel.self) private var appModel
+    @Binding var selectedTab: Int
 
     var body: some View {
         NavigationStack {
@@ -20,7 +21,9 @@ struct WhatIfTab: View {
                     } else {
                         EmptyStateView(
                             systemImage: "wand.and.stars",
-                            message: "Look up a member on the Overview tab to use the what-if simulator."
+                            message: "Look up a member to use the what-if simulator.",
+                            actionTitle: "Go to Lookup",
+                            action: { selectedTab = 0 }
                         )
                     }
                 }

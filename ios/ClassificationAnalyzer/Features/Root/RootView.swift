@@ -7,22 +7,26 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            OverviewTab()
-                .tabItem { Label("Overview", systemImage: "house") }
+            LookupTab(selectedTab: $selectedTab)
+                .tabItem { Label("Lookup", systemImage: "magnifyingglass") }
                 .tag(0)
 
-            WhatIfTab()
-                .tabItem { Label("What-If", systemImage: "wand.and.stars") }
+            OverviewTab(selectedTab: $selectedTab)
+                .tabItem { Label("Overview", systemImage: "person.text.rectangle") }
                 .tag(1)
 
-            ScoresTab()
-                .tabItem { Label("Scores", systemImage: "list.bullet") }
+            WhatIfTab(selectedTab: $selectedTab)
+                .tabItem { Label("What-If", systemImage: "wand.and.stars") }
                 .tag(2)
+
+            ScoresTab(selectedTab: $selectedTab)
+                .tabItem { Label("Scores", systemImage: "list.bullet") }
+                .tag(3)
         }
         .onChange(of: selectedTab) { _, _ in
-            // Keyboard persists across tab switches in SwiftUI's TabView; the
-            // previously-focused TextField stays focused but invisible, which
-            // strands the keyboard. Force-dismiss on every switch.
+            // SwiftUI's TabView keeps focus on the previously-focused TextField
+            // when its parent tab leaves the screen, stranding the keyboard
+            // with no visible field to dismiss against. Force it down.
             UIApplication.shared.sendAction(
                 #selector(UIResponder.resignFirstResponder),
                 to: nil, from: nil, for: nil
@@ -31,7 +35,7 @@ struct RootView: View {
     }
 }
 
-// Helper used by the tabs that need a top-of-screen division switcher.
+// Sticky division switcher shown above tabs that depend on a selected division.
 struct DivisionHeader: View {
     @Environment(AppModel.self) private var appModel
 
@@ -46,9 +50,11 @@ struct DivisionHeader: View {
 struct EmptyStateView: View {
     let systemImage: String
     let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Image(systemName: systemImage)
                 .font(.system(size: 48))
                 .foregroundStyle(.tertiary)
@@ -56,6 +62,10 @@ struct EmptyStateView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.borderedProminent)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(40)

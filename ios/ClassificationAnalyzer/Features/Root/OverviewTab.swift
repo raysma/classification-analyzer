@@ -3,14 +3,13 @@ import USPSADomain
 
 struct OverviewTab: View {
     @Environment(AppModel.self) private var appModel
+    @Binding var selectedTab: Int
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    LookupView()
-
-                    if let record = appModel.effectiveRecord {
+                if let record = appModel.effectiveRecord {
+                    VStack(spacing: 16) {
                         DivisionPicker()
 
                         if let division = appModel.selectedDivision {
@@ -42,14 +41,19 @@ struct OverviewTab: View {
                         Text(recordFooter(record))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
-                    } else if !appModel.warnings.isEmpty {
-                        WarningBanner(warnings: appModel.warnings)
                     }
+                    .padding()
+                } else {
+                    EmptyStateView(
+                        systemImage: "person.crop.circle.badge.questionmark",
+                        message: "No record loaded yet.",
+                        actionTitle: "Go to Lookup",
+                        action: { selectedTab = 0 }
+                    )
                 }
-                .padding()
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Classification Analyzer")
+            .navigationTitle("Overview")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

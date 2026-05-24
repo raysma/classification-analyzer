@@ -3,6 +3,7 @@ import USPSADomain
 
 struct ScoresTab: View {
     @Environment(AppModel.self) private var appModel
+    @Binding var selectedTab: Int
 
     var body: some View {
         NavigationStack {
@@ -21,7 +22,9 @@ struct ScoresTab: View {
                     } else {
                         EmptyStateView(
                             systemImage: "list.bullet",
-                            message: "Look up a member on the Overview tab to see classifier scores."
+                            message: "Look up a member to see classifier scores.",
+                            actionTitle: "Go to Lookup",
+                            action: { selectedTab = 0 }
                         )
                     }
                 }
