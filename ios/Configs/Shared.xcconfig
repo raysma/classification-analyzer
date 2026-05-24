@@ -1,2 +1,7 @@
 SWIFT_VERSION = 6.0
 IPHONEOS_DEPLOYMENT_TARGET = 18.0
+
+// Optional local-only overrides (signing team, custom URLs, etc.).
+// The `?` makes the include silent if the file is missing, so fresh
+// clones and CI builds still work without it. See ios/README.md.
+#include? "Local.xcconfig"

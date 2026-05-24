@@ -56,4 +56,20 @@ CI runs the same on every push that touches `ios/**`.
 
 ## Signing
 
-`DEVELOPMENT_TEAM` is left blank in `project.yml`. The first time you open the project in Xcode, set your team under **Signing & Capabilities** → "Automatically manage signing" → select your Apple Developer team.
+One-time setup so `xcodegen generate` doesn't blow away your team selection:
+
+```sh
+cp Configs/Local.xcconfig.example Configs/Local.xcconfig
+```
+
+Edit `Configs/Local.xcconfig` and uncomment / set:
+
+```
+DEVELOPMENT_TEAM = ABCDE12345
+```
+
+Find your team ID at <https://developer.apple.com/account/> → Membership Details. The 10-character string near the top.
+
+`Local.xcconfig` is gitignored, so the team ID never reaches the repo. `Shared.xcconfig` does an `#include?` of it — the `?` makes the include silent if the file is missing, so fresh clones and CI builds still work.
+
+After the file's in place, `xcodegen generate` and Xcode will pick up the team automatically every time.

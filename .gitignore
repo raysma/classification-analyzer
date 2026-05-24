@@ -39,5 +39,6 @@ ios/Packages/*/.build
 ios/Packages/*/.swiftpm
 ios/DerivedData
 ios/ClassificationAnalyzer/Info.plist
+ios/Configs/Local.xcconfig
 xcuserdata/
 *.xcuserstate
