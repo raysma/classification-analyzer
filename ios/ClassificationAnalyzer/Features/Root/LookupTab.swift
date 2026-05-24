@@ -59,17 +59,11 @@ struct LookupTab: View {
                         }
                     }
 
-                Button {
+                Button(appModel.isLoading ? "Looking up…" : "Look up") {
                     triggerLookup()
-                } label: {
-                    Text(appModel.isLoading ? "Looking up…" : "Look up")
-                        .frame(minWidth: 80)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(
-                    appModel.memberNumber.trimmingCharacters(in: .whitespaces).isEmpty
-                        || appModel.isLoading
-                )
+                .frame(minWidth: 90)
             }
 
             if let error = appModel.lastError {
@@ -112,6 +106,16 @@ struct LookupTab: View {
     }
 
     private func triggerLookup() {
+        // Guards in code instead of .disabled() on the button — the iOS 26
+        // borderedProminent disabled state renders near-black in dark mode,
+        // making the button unreadable both with no input and during loading.
+        // Keep the button visually enabled and refuse-to-act here.
+        guard !appModel.isLoading else { return }
+        let cleaned = appModel.memberNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else {
+            memberFieldFocused = true
+            return
+        }
         memberFieldFocused = false
         Task {
             await appModel.lookup()
