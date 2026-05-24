@@ -81,6 +81,8 @@ struct ProgressChartView: View {
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(color(for: band.letter))
                         }
+                        .accessibilityLabel("\(band.letter.rawValue) class threshold")
+                        .accessibilityValue("\(Int(band.threshold)) percent")
                 }
 
                 ForEach(pointData) { point in
@@ -91,6 +93,8 @@ struct ProgressChartView: View {
                     .foregroundStyle(color(for: classFor(point.percent)))
                     .symbolSize(isSelected(point) ? 110 : 50)
                     .opacity(selectedDate == nil || isSelected(point) ? 1.0 : 0.55)
+                    .accessibilityLabel(accessibilityLabel(for: point))
+                    .accessibilityValue(String(format: "%.2f percent", point.percent))
                 }
 
                 ForEach(lineData) { entry in
@@ -102,6 +106,8 @@ struct ProgressChartView: View {
                     .interpolationMethod(.monotone)
                     .foregroundStyle(Color.cyan)
                     .lineStyle(StrokeStyle(lineWidth: 2))
+                    .accessibilityLabel("Classification rolling average")
+                    .accessibilityValue(String(format: "%.2f percent on \(entry.date.formatted(date: .abbreviated, time: .omitted))", entry.percent))
                 }
             }
             .chartYScale(domain: 0...110)
@@ -216,6 +222,12 @@ struct ProgressChartView: View {
         case .d: return .red
         case .u: return .gray
         }
+    }
+
+    private func accessibilityLabel(for point: PointEntry) -> String {
+        let dateText = point.date.formatted(date: .abbreviated, time: .omitted)
+        let nameSuffix = point.name.map { ", \($0)" } ?? ""
+        return "Classifier \(point.code) on \(dateText)\(nameSuffix)"
     }
 }
 

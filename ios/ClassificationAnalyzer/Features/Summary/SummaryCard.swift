@@ -10,6 +10,8 @@ struct SummaryCard: View {
     let officialClass: ClassInfo?
     let crossDivisionFloor: ClassLetter?
 
+    @ScaledMetric(relativeTo: .title) private var percentFontSize: CGFloat = 30
+
     private var stickyLetter: ClassLetter {
         stickyClassFor(currentPercent: projectedPercent, allTimeHighPercent: allTimeHighPercent)
     }
@@ -65,8 +67,9 @@ struct SummaryCard: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(String(format: "%.4f%%", percent))
-                            .font(.system(size: 30, weight: .bold))
+                            .font(.system(size: percentFontSize, weight: .bold))
                             .monospacedDigit()
+                            .minimumScaleFactor(0.7)
 
                         if let gap, let threshold = nextClassThreshold(displayLetter) {
                             Text(String(format: "%.4f%% to %g%%", gap, threshold))
