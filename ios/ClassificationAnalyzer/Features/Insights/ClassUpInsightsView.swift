@@ -57,10 +57,10 @@ struct ClassUpInsightsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.yellow.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        .background(.yellow.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(.yellow.opacity(0.4), lineWidth: 1)
+                .stroke(.yellow.opacity(0.5), lineWidth: 1)
         )
     }
 
@@ -128,7 +128,7 @@ struct ClassUpInsightsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(tint.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+        .background(tint.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
         .foregroundStyle(tint)
     }
 

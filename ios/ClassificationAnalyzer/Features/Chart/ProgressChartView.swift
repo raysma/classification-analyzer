@@ -76,11 +76,11 @@ struct ProgressChartView: View {
                     RuleMark(y: .value("Threshold", band.threshold))
                         .foregroundStyle(color(for: band.letter).opacity(0.55))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                        .annotation(position: .trailing, alignment: .leading) {
+                        .annotation(position: .topTrailing, alignment: .bottomTrailing, spacing: 1) {
                             Text(band.letter.rawValue)
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(color(for: band.letter))
-                                .padding(.leading, 4)
+                                .padding(.trailing, 2)
                         }
                 }
 
@@ -107,7 +107,9 @@ struct ProgressChartView: View {
             }
             .chartYScale(domain: 0...110)
             .chartYAxis {
-                AxisMarks { value in
+                // Explicit .leading so the % ticks render on the left, away
+                // from the trailing class-letter annotations on the right.
+                AxisMarks(position: .leading) { value in
                     AxisGridLine().foregroundStyle(.tertiary.opacity(0.4))
                     AxisValueLabel {
                         if let pct = value.as(Double.self) {
@@ -125,8 +127,32 @@ struct ProgressChartView: View {
                 }
             }
             .chartXSelection(value: $selectedDate)
+            // Tap-to-select layered on top of the default long-press drag.
+            // Apple's chartXSelection only fires on long-press, which most
+            // touch users wouldn't think to try. Tap snaps to nearest dot.
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(Color.clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            guard let plotFrame = proxy.plotFrame else { return }
+                            let origin = geo[plotFrame].origin
+                            let xInPlot = location.x - origin.x
+                            guard let touched: Date = proxy.value(atX: xInPlot) else {
+                                return
+                            }
+                            // Snap to the nearest data point so the selection
+                            // sits cleanly on a real dot.
+                            let nearest = pointData.min { a, b in
+                                abs(a.date.timeIntervalSince(touched)) < abs(b.date.timeIntervalSince(touched))
+                            }
+                            selectedDate = nearest?.date ?? touched
+                        }
+                }
+            }
             .frame(height: 240)
-            .padding(.trailing, 20)
+            .padding(.trailing, 4)
 
             if !selectedPoints.isEmpty {
                 hoverCard
