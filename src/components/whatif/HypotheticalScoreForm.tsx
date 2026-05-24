@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 
 export default function HypotheticalScoreForm() {
-  const { hypotheticalScores, addHypothetical } = useAppStore()
+  const { hypotheticalScores, addHypothetical, resetScenario } = useAppStore()
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const isFull = hypotheticalScores.length >= 8
+  const hasChanges = hypotheticalScores.length > 0
 
   function handleAdd() {
     const val = parseFloat(input)
@@ -21,9 +22,20 @@ export default function HypotheticalScoreForm() {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
-        Add hypothetical score (max 8)
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+          Add hypothetical score (max 8)
+        </p>
+        {hasChanges && (
+          <button
+            type="button"
+            onClick={resetScenario}
+            className="text-xs text-gray-500 dark:text-gray-400 underline hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            Reset
+          </button>
+        )}
+      </div>
       <div className="flex gap-2">
         <input
           type="number"
