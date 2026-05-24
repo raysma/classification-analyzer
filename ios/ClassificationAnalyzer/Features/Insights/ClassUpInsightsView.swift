@@ -74,7 +74,7 @@ struct ClassUpInsightsView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .refinedSurface()
     }
 
     private func mainGrid(first: RequiredAverageResult) -> some View {

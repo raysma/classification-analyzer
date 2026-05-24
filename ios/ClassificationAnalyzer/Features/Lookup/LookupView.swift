@@ -56,7 +56,7 @@ struct LookupView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .refinedSurface()
         .sheet(isPresented: $showingPasteSheet) {
             ManualPasteSheet()
                 .environment(appModel)

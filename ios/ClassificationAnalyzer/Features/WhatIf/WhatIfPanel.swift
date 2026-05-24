@@ -65,7 +65,7 @@ struct WhatIfPanel: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .refinedSurface()
     }
 
     private var header: some View {

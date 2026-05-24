@@ -134,7 +134,7 @@ struct ProgressChartView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .refinedSurface()
     }
 
     private var hoverCard: some View {
@@ -167,7 +167,7 @@ struct ProgressChartView: View {
             }
         }
         .padding(8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .refinedSurface(corner: 8)
     }
 
     private func isSelected(_ point: PointEntry) -> Bool {
