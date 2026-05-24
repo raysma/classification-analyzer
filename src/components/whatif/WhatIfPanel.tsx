@@ -31,10 +31,6 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
   const hypoCodeToId = new Map(hypotheticalScores.map((h) => [`hypo-${h.id}`, h.id]))
   const hypoCodeSet = new Set(hypoCodeToId.keys())
 
-  // Real scores that got pushed out of the window because hypotheticals took their spots
-  const scenWindowIds = new Set(scenarioWindowScores.map(classifierKey))
-  const pushedOut = windowScores.filter((s) => !scenWindowIds.has(classifierKey(s)))
-
   // Display order: hypotheticals first (newest), then real scores newest-to-oldest
   const displayScores = [...scenarioWindowScores].sort((a, b) => {
     const dateCmp = b.date.localeCompare(a.date)
@@ -143,19 +139,6 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
             </div>
           )
         })}
-
-        {/* Scores pushed out of the window by hypotheticals */}
-        {pushedOut.map((s) => (
-          <div
-            key={`out-${classifierKey(s)}`}
-            className="flex items-center gap-2 text-xs px-1 py-0.5 opacity-40"
-          >
-            <span className="w-4 shrink-0 text-center text-gray-400">E</span>
-            <span className="line-through">
-              {s.date} · {s.classifierCode} · {s.percent.toFixed(4)}%
-            </span>
-          </div>
-        ))}
       </div>
 
       <HypotheticalScoreForm />
