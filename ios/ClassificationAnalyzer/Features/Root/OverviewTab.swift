@@ -51,12 +51,10 @@ struct OverviewTab: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Overview")
+            .navigationTitle(appModel.selectedDivision?.displayName ?? "Overview")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    DivisionMenuButton(fallbackTitle: "Overview")
-                }
+            .toolbarTitleMenu {
+                DivisionMenuItems()
             }
         }
     }

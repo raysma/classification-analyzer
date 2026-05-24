@@ -38,12 +38,10 @@ struct WhatIfTab: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
-            .navigationTitle("What-If")
+            .navigationTitle(appModel.selectedDivision?.displayName ?? "What-If")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    DivisionMenuButton(fallbackTitle: "What-If")
-                }
+            .toolbarTitleMenu {
+                DivisionMenuItems()
             }
         }
     }
