@@ -234,45 +234,41 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <TabNav currentTab={tab} onChange={setTab} />
+        <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
 
-        {tab === 'overview' && (
-          <>
-            <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
-
-            {isFetching && !data && memberNumber && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Fetching {memberNumber} from USPSA…
-              </p>
-            )}
-            <ManualPastePanel />
-
-            {warnings.length > 0 && (
-              <div
-                role="alert"
-                className="flex items-start gap-3 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
-              >
-                <span className="flex-1">
-                  Heads up — we couldn&apos;t parse {warnings.length} row
-                  {warnings.length !== 1 ? 's' : ''}. Display may be incomplete.
-                </span>
-                <button
-                  onClick={dismissWarnings}
-                  aria-label="Dismiss warnings"
-                  className="shrink-0 font-medium underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-
-            <ErrorBanner error={error} />
-          </>
+        {isFetching && !data && memberNumber && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Fetching {memberNumber} from USPSA…
+          </p>
         )}
+        <ManualPastePanel />
+
+        {warnings.length > 0 && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
+          >
+            <span className="flex-1">
+              Heads up — we couldn&apos;t parse {warnings.length} row
+              {warnings.length !== 1 ? 's' : ''}. Display may be incomplete.
+            </span>
+            <button
+              onClick={dismissWarnings}
+              aria-label="Dismiss warnings"
+              className="shrink-0 font-medium underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        <ErrorBanner error={error} />
+
+        <TabNav currentTab={tab} onChange={setTab} />
 
         {record && (
           <div className="space-y-4">
