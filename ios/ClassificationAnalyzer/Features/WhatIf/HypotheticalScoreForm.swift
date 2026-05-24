@@ -31,7 +31,13 @@ struct HypotheticalScoreForm: View {
                     .toolbar {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
-                            Button("Done") { inputFocused = false }
+                            Button {
+                                inputFocused = false
+                            } label: {
+                                Image(systemName: "keyboard.chevron.compact.down")
+                                    .font(.title3)
+                            }
+                            .accessibilityLabel("Dismiss keyboard")
                         }
                     }
 

@@ -49,22 +49,21 @@ struct LookupTab: View {
                     .toolbar {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
-                            Button("Done") { memberFieldFocused = false }
+                            Button {
+                                memberFieldFocused = false
+                            } label: {
+                                Image(systemName: "keyboard.chevron.compact.down")
+                                    .font(.title3)
+                            }
+                            .accessibilityLabel("Dismiss keyboard")
                         }
                     }
 
                 Button {
                     triggerLookup()
                 } label: {
-                    ZStack {
-                        Text("Look up")
-                            .opacity(appModel.isLoading ? 0 : 1)
-                        if appModel.isLoading {
-                            ProgressView()
-                                .controlSize(.small)
-                                .tint(.white)
-                        }
-                    }
+                    Text(appModel.isLoading ? "Looking up…" : "Look up")
+                        .frame(minWidth: 80)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(
