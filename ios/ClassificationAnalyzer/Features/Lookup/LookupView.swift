@@ -3,6 +3,7 @@ import USPSAClient
 
 struct LookupView: View {
     @Environment(AppModel.self) private var appModel
+    @State private var showingPasteSheet: Bool = false
 
     var body: some View {
         @Bindable var model = appModel
@@ -40,9 +41,25 @@ struct LookupView: View {
                     .font(.callout)
                     .foregroundStyle(.red)
             }
+
+            Button {
+                showingPasteSheet = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "doc.on.clipboard")
+                    Text("Paste classifier data manually")
+                }
+                .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .sheet(isPresented: $showingPasteSheet) {
+            ManualPasteSheet()
+                .environment(appModel)
+        }
     }
 }

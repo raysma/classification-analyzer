@@ -25,6 +25,7 @@ final class AppModel {
         }
     }
     var fetchedRecord: ShooterRecord?
+    var pastedRecord: ShooterRecord?
     var warnings: [String] = []
     var isLoading: Bool = false
     var lastError: ClassificationError?
@@ -44,6 +45,11 @@ final class AppModel {
         }
     }
 
+    // The record currently displayed: fetched takes priority over pasted.
+    var effectiveRecord: ShooterRecord? {
+        fetchedRecord ?? pastedRecord
+    }
+
     func lookup() async {
         let cleaned = memberNumber
             .uppercased()
@@ -58,12 +64,7 @@ final class AppModel {
             let response = try await client.fetch(member: cleaned)
             fetchedRecord = response.record
             warnings = response.warnings
-
-            let available = availableDivisions(in: response.record)
-            let currentIsValid = selectedDivision.map { available.contains($0) } ?? false
-            if !currentIsValid {
-                selectedDivision = available.first
-            }
+            reconcileSelectedDivision()
         } catch let error as ClassificationError {
             lastError = error
         } catch {
@@ -71,25 +72,62 @@ final class AppModel {
         }
     }
 
+    func applyPaste(classifiers: [Classifier], division: Division, warnings: [String]) {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let base = pastedRecord ?? ShooterRecord(
+            memberNumber: "",
+            name: "Pasted record",
+            membershipType: .unknown,
+            currentClasses: [:],
+            classifiers: [:],
+            fetchedAt: now,
+            source: .paste
+        )
+        var updatedClassifiers = base.classifiers
+        updatedClassifiers[division] = classifiers
+        pastedRecord = ShooterRecord(
+            memberNumber: base.memberNumber,
+            name: base.name,
+            membershipType: base.membershipType,
+            currentClasses: base.currentClasses,
+            classifiers: updatedClassifiers,
+            fetchedAt: now,
+            source: .paste
+        )
+        if !warnings.isEmpty {
+            self.warnings = warnings
+        }
+        reconcileSelectedDivision()
+    }
+
+    func clearPastedRecord() {
+        pastedRecord = nil
+        reconcileSelectedDivision()
+    }
+
+    private func reconcileSelectedDivision() {
+        let available = availableDivisions
+        let currentIsValid = selectedDivision.map { available.contains($0) } ?? false
+        if !currentIsValid {
+            selectedDivision = available.first
+        }
+    }
+
     // MARK: Derived state for the active division
 
     var availableDivisions: [Division] {
-        guard let record = fetchedRecord else { return [] }
-        return availableDivisions(in: record)
-    }
-
-    private func availableDivisions(in record: ShooterRecord) -> [Division] {
+        guard let record = effectiveRecord else { return [] }
         let withScores = record.classifiers.keys
         return canonicalDivisionOrder.filter { withScores.contains($0) }
     }
 
     var activeClassifiers: [Classifier] {
-        guard let record = fetchedRecord, let div = selectedDivision else { return [] }
+        guard let record = effectiveRecord, let div = selectedDivision else { return [] }
         return record.classifiers[div] ?? []
     }
 
     var officialClass: ClassInfo? {
-        guard let record = fetchedRecord, let div = selectedDivision else { return nil }
+        guard let record = effectiveRecord, let div = selectedDivision else { return nil }
         return record.currentClasses[div]
     }
 
@@ -110,10 +148,14 @@ final class AppModel {
     }
 
     var crossDivisionFloor: ClassLetter? {
-        guard let record = fetchedRecord, let div = selectedDivision else { return nil }
+        guard let record = effectiveRecord, let div = selectedDivision else { return nil }
         return crossDivisionFloorClass(
             classifiersByDivision: record.classifiers,
             scopedDivision: div
         )
+    }
+
+    var classificationHistory: [ClassificationSnapshot] {
+        getClassificationHistory(activeClassifiers)
     }
 }

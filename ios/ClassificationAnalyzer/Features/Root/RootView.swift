@@ -10,7 +10,7 @@ struct RootView: View {
                 VStack(spacing: 16) {
                     LookupView()
 
-                    if let record = appModel.fetchedRecord {
+                    if let record = appModel.effectiveRecord {
                         DivisionPicker()
 
                         if let division = appModel.selectedDivision {
@@ -27,6 +27,11 @@ struct RootView: View {
                                 WarningBanner(warnings: appModel.warnings)
                             }
 
+                            ProgressChartView(
+                                classifiers: appModel.activeClassifiers,
+                                history: appModel.classificationHistory
+                            )
+
                             ClassUpInsightsView(
                                 classifiers: appModel.activeClassifiers,
                                 division: division,
@@ -38,7 +43,7 @@ struct RootView: View {
                             }
                         }
 
-                        Text("\(record.name) (\(record.memberNumber)) — \(record.membershipType.rawValue)")
+                        Text(recordFooter(record))
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     } else if !appModel.warnings.isEmpty {
@@ -51,6 +56,17 @@ struct RootView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
     }
+
+    private func recordFooter(_ record: ShooterRecord) -> String {
+        if record.source == .paste {
+            let divs = record.classifiers.keys
+                .map { $0.displayName }
+                .sorted()
+                .joined(separator: ", ")
+            return "Pasted record — \(divs.isEmpty ? "no divisions" : divs)"
+        }
+        return "\(record.name) (\(record.memberNumber)) — \(record.membershipType.rawValue)"
+    }
 }
 
 private struct WarningBanner: View {
@@ -58,7 +74,7 @@ private struct WarningBanner: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Partial parse", systemImage: "exclamationmark.triangle.fill")
+            Label("Heads up", systemImage: "exclamationmark.triangle.fill")
                 .font(.callout.bold())
                 .foregroundStyle(.orange)
             ForEach(warnings, id: \.self) { w in

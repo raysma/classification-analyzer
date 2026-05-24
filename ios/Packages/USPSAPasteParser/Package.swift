@@ -19,6 +19,7 @@ let package = Package(
         .testTarget(
             name: "USPSAPasteParserTests",
             dependencies: ["USPSAPasteParser", "USPSADomain"],
+            resources: [.copy("Fixtures")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]
