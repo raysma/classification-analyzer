@@ -8,7 +8,6 @@ struct WhatIfPanel: View {
     let division: Division
 
     @Environment(AppModel.self) private var appModel
-    @State private var showPushedOut: Bool = false
 
     private var scenarioWindow: RollingWindow {
         getCurrentWindow(appModel.buildScenarioScores(windowScores: windowScores))
@@ -46,11 +45,6 @@ struct WhatIfPanel: View {
             if a.date != b.date { return a.date > b.date }
             return a.percent > b.percent
         }
-    }
-
-    private var pushedOut: [Classifier] {
-        let scenarioKeys = Set(scenarioWindowScores.map(classifierKey))
-        return windowScores.filter { !scenarioKeys.contains(classifierKey($0)) }
     }
 
     private var hasChanges: Bool {
@@ -145,30 +139,6 @@ struct WhatIfPanel: View {
             ForEach(displayScores, id: \.self) { s in
                 row(for: s)
             }
-
-            if !pushedOut.isEmpty {
-                Button {
-                    showPushedOut.toggle()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: showPushedOut ? "chevron.down" : "chevron.right")
-                            .font(.caption2)
-                        Text(showPushedOut
-                            ? "Hide \(pushedOut.count) pushed-out"
-                            : "Show \(pushedOut.count) pushed-out")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 2)
-
-                if showPushedOut {
-                    ForEach(pushedOut, id: \.self) { s in
-                        pushedOutRow(s)
-                    }
-                }
-            }
         }
     }
 
@@ -221,20 +191,5 @@ struct WhatIfPanel: View {
         if isHypo { return .indigo }
         if isDropped { return .secondary }
         return .primary
-    }
-
-    private func pushedOutRow(_ s: Classifier) -> some View {
-        HStack(spacing: 8) {
-            Text("E")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-                .frame(width: 14, alignment: .center)
-            Text("\(s.date) · \(s.classifierCode) · \(String(format: "%.4f%%", s.percent))")
-                .font(.caption.monospaced())
-                .strikethrough()
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-        }
-        .opacity(0.6)
     }
 }
