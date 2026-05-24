@@ -38,6 +38,12 @@ struct RootView: View {
                                 officialClass: appModel.officialClass
                             )
 
+                            WhatIfPanel(
+                                windowScores: appModel.activeClassifiers,
+                                currentPercent: appModel.projectedPercent,
+                                division: division
+                            )
+
                             if !appModel.activeClassifiers.isEmpty {
                                 ClassifierTableView(classifiers: appModel.activeClassifiers)
                             }

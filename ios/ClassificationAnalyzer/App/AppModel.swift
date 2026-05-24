@@ -17,6 +17,9 @@ final class AppModel {
     var memberNumber: String = ""
     var selectedDivision: Division? {
         didSet {
+            if oldValue != selectedDivision {
+                hypotheticalScores = []
+            }
             if let raw = selectedDivision?.rawValue {
                 UserDefaults.standard.set(raw, forKey: selectedDivisionDefaultsKey)
             } else {
@@ -29,6 +32,7 @@ final class AppModel {
     var warnings: [String] = []
     var isLoading: Bool = false
     var lastError: ClassificationError?
+    var hypotheticalScores: [HypotheticalScore] = []
 
     private let client: ClassificationClient
 
@@ -158,4 +162,41 @@ final class AppModel {
     var classificationHistory: [ClassificationSnapshot] {
         getClassificationHistory(activeClassifiers)
     }
+
+    // MARK: What-if scenario
+
+    func addHypothetical(percent: Double) {
+        guard hypotheticalScores.count < 8 else { return }
+        hypotheticalScores.append(HypotheticalScore(id: UUID(), percent: percent))
+    }
+
+    func removeHypothetical(id: UUID) {
+        hypotheticalScores.removeAll { $0.id == id }
+    }
+
+    func resetScenario() {
+        hypotheticalScores = []
+    }
+
+    func buildScenarioScores(windowScores: [Classifier]) -> [Classifier] {
+        let synthetic = hypotheticalScores.enumerated().map { i, h in
+            let mm = String(format: "%02d", i + 1)
+            return Classifier(
+                date: "9999-\(mm)-01",
+                classifierCode: "hypo-\(h.id.uuidString)",
+                classifierName: nil,
+                hitFactor: nil,
+                percent: h.percent,
+                flag: .y,
+                source: .club,
+                matchName: nil
+            )
+        }
+        return windowScores + synthetic
+    }
+}
+
+struct HypotheticalScore: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let percent: Double
 }
