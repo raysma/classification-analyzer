@@ -39,32 +39,34 @@ extension ClassificationError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidMemberNumber:
-            return "Member number format isn't recognized."
+            return "That doesn't look like a USPSA member number. Examples: A12345, L4898, TY123."
         case .rateLimited:
-            return "Too many lookups in a short window. Try again in a minute."
+            return "Too many lookups in a short window. Wait a minute and try again."
         case .scrapingNotConfigured, .scrapingAuthFailed:
-            return "Backend can't reach USPSA right now."
+            return "USPSA is unreachable right now. Try again in a few minutes, or paste your classifier data manually."
         case .memberNotFound:
-            return "No USPSA record found for that member number."
+            return "No USPSA record found for that member number. Double-check the spelling."
         case .recordNotViewable:
-            return "That record is private and can't be viewed."
+            return "That record is private. Contact USPSA support to make it public, or paste your classifier data manually."
         case .upstreamTimeout:
-            return "USPSA took too long to respond. Try again."
+            return "USPSA took too long to respond. Try again in a moment."
         case .fetchFailed(let status):
-            if let status { return "Fetch failed (status \(status))." }
-            return "Fetch failed."
+            if let status {
+                return "Couldn't reach USPSA (status \(status)). Try again or paste your data manually."
+            }
+            return "Couldn't reach USPSA. Try again or paste your data manually."
         case .parseFailed:
-            return "Could not parse the USPSA page."
+            return "USPSA returned an unexpected page. Try again or paste your classifier data manually."
         case .validationFailed, .decodeFailed:
-            return "Got an unexpected response shape."
+            return "USPSA's response format may have changed. Try again or paste your classifier data manually."
         case .methodNotAllowed:
-            return "Backend rejected the request."
+            return "Server error. Please try again."
         case .transport:
-            return "Network error. Check your connection."
+            return "Network error. Check your connection and try again."
         case .badURL:
-            return "Bad request URL."
+            return "Something went wrong building the request."
         case .unknown(_, let status):
-            return "Unexpected response (status \(status))."
+            return "Unexpected response from USPSA (status \(status)). Try again or paste your data manually."
         }
     }
 }

@@ -26,9 +26,15 @@ struct DivisionMenuButton: View {
                 HStack(spacing: 4) {
                     Text(selected.displayName)
                         .font(.headline)
+                        .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption2.weight(.semibold))
                 }
+                // Toolbar .principal slot interpolates the label width when
+                // the selected value changes, clipping the new (wider) text
+                // mid-animation. fixedSize grants the natural width and
+                // skips that intermediate clipped state.
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(.primary)
                 .accessibilityLabel("Division: \(selected.displayName). Double-tap to change.")
             }
