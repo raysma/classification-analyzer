@@ -1,3 +1,1 @@
 #include "Shared.xcconfig"
-
-API_BASE_URL = https:/$()/www.rmshooting.com

@@ -1,5 +1,1 @@
 #include "Shared.xcconfig"
-
-// `//` is a comment delimiter in xcconfig; the `$()` empty-variable break is the
-// canonical workaround to embed a URL scheme separator.
-API_BASE_URL = http:/$()/localhost:3000

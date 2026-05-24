@@ -16,10 +16,13 @@ final class AppModel {
     private let client: ClassificationClient
 
     init() {
-        let raw = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String
-            ?? "https://www.rmshooting.com"
-        guard let url = URL(string: raw) else {
-            fatalError("Invalid API_BASE_URL in Info.plist: \(raw)")
+        #if DEBUG
+        let urlString = "http://localhost:3000"
+        #else
+        let urlString = "https://www.rmshooting.com"
+        #endif
+        guard let url = URL(string: urlString) else {
+            fatalError("Bad API base URL: \(urlString)")
         }
         self.client = ClassificationClient(baseURL: url)
     }
