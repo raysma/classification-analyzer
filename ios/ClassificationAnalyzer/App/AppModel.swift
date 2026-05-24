@@ -16,7 +16,7 @@ final class AppModel {
     private let client: ClassificationClient
 
     init() {
-        let urlString = "https://www.rmshooting.com"
+        let urlString = "https://classification.rmshooting.com"
         guard let url = URL(string: urlString) else {
             fatalError("Bad API base URL: \(urlString)")
         }

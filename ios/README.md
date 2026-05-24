@@ -35,10 +35,7 @@ ios/
 
 ## Backend
 
-The app calls the existing Vercel function at `/api/classification?member=<id>`. Base URL comes from `API_BASE_URL` in the active `.xcconfig`:
-
-- **Debug** → `http://localhost:3000` (run `pnpm dev:api` from the repo root)
-- **Release** → `https://www.rmshooting.com`
+The app calls the existing Vercel function at `https://classification.rmshooting.com/api/classification?member=<id>`. Base URL is hardcoded in `AppModel.init()` for both Debug and Release builds — point it elsewhere if you need to test against a preview deployment or a local `pnpm dev:api`.
 
 ## Testing
 
