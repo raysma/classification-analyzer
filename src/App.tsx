@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ValidatedShooterRecord } from './lib/validation'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { useQuery } from '@tanstack/react-query'
@@ -43,6 +44,48 @@ const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   key: 'classification-query-cache-v4',
 })
+
+function CollapsedLookupBar({
+  record,
+  expanded,
+  onToggle,
+}: {
+  record: ValidatedShooterRecord
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap min-w-0">
+        {record.source !== 'paste' && (
+          <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+            {record.memberNumber}
+          </span>
+        )}
+        <span className="font-medium truncate">{record.name}</span>
+        {record.source !== 'paste' && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {record.membershipType}
+          </span>
+        )}
+        {record.source === 'paste' && (
+          <span className="rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-0.5 text-xs font-medium">
+            Manual paste
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls="lookup-section"
+        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+      >
+        {expanded ? 'Done' : 'Change'}
+      </button>
+    </div>
+  )
+}
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -141,6 +184,7 @@ function ErrorBanner({ error }: { error: unknown }) {
 function AppInner() {
   const [showChangelog, setShowChangelog] = useState(false)
   const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
+  const [lookupExpanded, setLookupExpanded] = useState(true)
 
   const {
     memberNumber,
@@ -177,6 +221,12 @@ function AppInner() {
 
   // Fetched record takes priority over pasted record
   const record = data?.record ?? pastedRecord ?? null
+
+  // Once we have a record, collapse the lookup form so it doesn't dominate
+  // vertical space. User reopens with the Change button.
+  useEffect(() => {
+    if (record) setLookupExpanded(false)
+  }, [record])
 
   // Auto-select first division when data arrives
   useEffect(() => {
@@ -234,18 +284,30 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
-
-        {isFetching && !data && memberNumber && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            Fetching {memberNumber} from USPSA…
-          </p>
+        {record && (
+          <CollapsedLookupBar
+            record={record}
+            expanded={lookupExpanded}
+            onToggle={() => setLookupExpanded((v) => !v)}
+          />
         )}
-        <ManualPastePanel />
+
+        {(!record || lookupExpanded) && (
+          <div id="lookup-section" className="space-y-6">
+            <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+
+            {isFetching && !data && memberNumber && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Fetching {memberNumber} from USPSA…
+              </p>
+            )}
+            <ManualPastePanel />
+          </div>
+        )}
 
         {warnings.length > 0 && (
           <div
@@ -270,22 +332,6 @@ function AppInner() {
 
         {record && (
           <div className="space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div>
-                <p className="text-lg font-semibold">{record.name}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {record.source === 'paste'
-                    ? null
-                    : `${record.memberNumber} · ${record.membershipType}`}
-                </p>
-              </div>
-              {record.source === 'paste' && (
-                <span className="rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-0.5 text-xs font-medium">
-                  Manual paste
-                </span>
-              )}
-            </div>
-
             <DivisionTabs
               divisions={divisionKeys}
               scoreCounts={scoreCounts}
