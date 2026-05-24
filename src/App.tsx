@@ -18,7 +18,7 @@ import WhatIfPanel from './components/whatif/WhatIfPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
-import { readUrlState, useUrlSync } from './lib/urlState'
+import { readUrlState, useUrlSync, type Tab } from './lib/urlState'
 import {
   getCurrentWindow,
   bestSixOfRecentEight,
@@ -43,6 +43,38 @@ const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   key: 'classification-query-cache-v4',
 })
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'whatif', label: 'What-If' },
+  { id: 'scores', label: 'Scores' },
+]
+
+function TabNav({ currentTab, onChange }: { currentTab: Tab; onChange: (t: Tab) => void }) {
+  return (
+    <nav role="tablist" aria-label="Sections" className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+      {TABS.map((tab) => {
+        const isActive = currentTab === tab.id
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tab.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+              isActive
+                ? 'border-blue-600 text-gray-900 dark:text-gray-100'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            {tab.label}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
 
 function ErrorBanner({ error }: { error: unknown }) {
   if (!error) return null
@@ -108,6 +140,7 @@ function ErrorBanner({ error }: { error: unknown }) {
 
 function AppInner() {
   const [showChangelog, setShowChangelog] = useState(false)
+  const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
 
   const {
     memberNumber,
@@ -129,7 +162,7 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useUrlSync(memberNumber, selectedDivision)
+  useUrlSync(memberNumber, selectedDivision, tab)
 
   const { data, isFetching, error } = useQuery({
     queryKey: ['classification', memberNumber],
@@ -201,39 +234,45 @@ function AppInner() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+        <TabNav currentTab={tab} onChange={setTab} />
 
-        {isFetching && !data && memberNumber && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            Fetching {memberNumber} from USPSA…
-          </p>
+        {tab === 'overview' && (
+          <>
+            <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+
+            {isFetching && !data && memberNumber && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Fetching {memberNumber} from USPSA…
+              </p>
+            )}
+            <ManualPastePanel />
+
+            {warnings.length > 0 && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
+              >
+                <span className="flex-1">
+                  Heads up — we couldn&apos;t parse {warnings.length} row
+                  {warnings.length !== 1 ? 's' : ''}. Display may be incomplete.
+                </span>
+                <button
+                  onClick={dismissWarnings}
+                  aria-label="Dismiss warnings"
+                  className="shrink-0 font-medium underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            <ErrorBanner error={error} />
+          </>
         )}
-        <ManualPastePanel />
-
-        {warnings.length > 0 && (
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
-          >
-            <span className="flex-1">
-              Heads up — we couldn&apos;t parse {warnings.length} row
-              {warnings.length !== 1 ? 's' : ''}. Display may be incomplete.
-            </span>
-            <button
-              onClick={dismissWarnings}
-              aria-label="Dismiss warnings"
-              className="shrink-0 font-medium underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        <ErrorBanner error={error} />
 
         {record && (
           <div className="space-y-4">
@@ -260,13 +299,13 @@ function AppInner() {
               onSelect={(d) => setSelectedDivision(d)}
             />
 
-            {selectedDivision && activeClassifiers.length === 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 No classifiers found for {formatDivision(selectedDivision)}.
               </p>
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
               <SummaryCard
                 projectedPercent={currentPercent}
                 windowSize={windowScores.length}
@@ -279,11 +318,11 @@ function AppInner() {
               />
             )}
 
-            {selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
               <ProgressChart classifiers={activeClassifiers} history={history} />
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
               <ClassUpInsights
                 classifiers={activeClassifiers}
                 division={selectedDivision}
@@ -293,14 +332,14 @@ function AppInner() {
               />
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
+            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
               <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
                 Only {activeClassifiers.length} of 4 classifiers in {formatDivision(selectedDivision)} — needs{' '}
                 {4 - activeClassifiers.length} more for an initial classification.
               </p>
             )}
 
-            {selectedDivision && windowScores.length > 0 && (
+            {tab === 'whatif' && selectedDivision && windowScores.length > 0 && (
               <WhatIfPanel
                 windowScores={windowScores}
                 currentPercent={currentPercent}
@@ -308,7 +347,13 @@ function AppInner() {
               />
             )}
 
-            {selectedDivision && activeClassifiers.length > 0 && (
+            {tab === 'whatif' && selectedDivision && windowScores.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No scores in window for {formatDivision(selectedDivision)} — nothing to simulate.
+              </p>
+            )}
+
+            {tab === 'scores' && selectedDivision && activeClassifiers.length > 0 && (
               <ClassifierTable
                 classifiers={activeClassifiers}
                 highlightedIds={includedIds}
@@ -316,7 +361,19 @@ function AppInner() {
                 excludedIds={excludedIds}
               />
             )}
+
+            {tab === 'scores' && selectedDivision && activeClassifiers.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No classifiers found for {formatDivision(selectedDivision)}.
+              </p>
+            )}
           </div>
+        )}
+
+        {!record && tab !== 'overview' && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Look up a member on the Overview tab to use this view.
+          </p>
         )}
 
         <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500">
