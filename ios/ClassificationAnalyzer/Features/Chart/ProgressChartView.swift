@@ -76,11 +76,10 @@ struct ProgressChartView: View {
                     RuleMark(y: .value("Threshold", band.threshold))
                         .foregroundStyle(color(for: band.letter).opacity(0.55))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                        .annotation(position: .topTrailing, alignment: .bottomTrailing, spacing: 1) {
+                        .annotation(position: .trailing, alignment: .leading, spacing: 4) {
                             Text(band.letter.rawValue)
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(color(for: band.letter))
-                                .padding(.trailing, 2)
                         }
                 }
 
@@ -127,6 +126,12 @@ struct ProgressChartView: View {
                 }
             }
             .chartXSelection(value: $selectedDate)
+            // Reserve a trailing gutter inside the chart so the class-letter
+            // annotations don't get clipped at the .refinedSurface border —
+            // GM at 95% sat right on the rounded corner before.
+            .chartPlotStyle { plot in
+                plot.padding(.trailing, 20)
+            }
             // Tap-to-select layered on top of the default long-press drag.
             // Apple's chartXSelection only fires on long-press, which most
             // touch users wouldn't think to try. Tap snaps to nearest dot.
@@ -152,7 +157,6 @@ struct ProgressChartView: View {
                 }
             }
             .frame(height: 240)
-            .padding(.trailing, 4)
 
             if !selectedPoints.isEmpty {
                 hoverCard

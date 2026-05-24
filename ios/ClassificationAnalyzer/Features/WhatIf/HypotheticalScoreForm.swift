@@ -10,11 +10,25 @@ struct HypotheticalScoreForm: View {
         appModel.hypotheticalScores.count >= 8
     }
 
+    private var hasChanges: Bool {
+        !appModel.hypotheticalScores.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Add hypothetical score (max 8)")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Add hypothetical score (max 8)")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if hasChanges {
+                    Button("Reset") { appModel.resetScenario() }
+                        .font(.caption)
+                        .buttonStyle(.plain)
+                        .underline()
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             HStack {
                 TextField("e.g. 69.69", text: $input)
@@ -24,18 +38,6 @@ struct HypotheticalScoreForm: View {
                     .disabled(isFull)
                     .focused($inputFocused)
                     .onChange(of: input) { _, _ in errorMessage = nil }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button {
-                                inputFocused = false
-                            } label: {
-                                Image(systemName: "keyboard.chevron.compact.down")
-                                    .font(.title3)
-                            }
-                            .accessibilityLabel("Dismiss keyboard")
-                        }
-                    }
 
                 Button("Add") { handleAdd() }
                     .buttonStyle(.borderedProminent)

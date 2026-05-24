@@ -15,18 +15,21 @@ struct LookupTab: View {
         @Bindable var model = appModel
 
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    lookupCard(memberNumber: $model.memberNumber)
-                    pasteCard
-                    // Recents list lands here in a follow-up — last N member
-                    // numbers persisted to UserDefaults, tap to re-fetch.
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        lookupCard(memberNumber: $model.memberNumber)
+                        pasteCard
+                        // Recents list lands here in a follow-up — last N member
+                        // numbers persisted to UserDefaults, tap to re-fetch.
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
+                    .contentShape(Rectangle())
+                    .onTapGesture { dismissKeyboard() }
                 }
-                .padding()
-                .contentShape(Rectangle())
-                .onTapGesture { dismissKeyboard() }
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Lookup")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingPasteSheet, onDismiss: handlePasteSheetDismiss) {
@@ -49,18 +52,6 @@ struct LookupTab: View {
                     .submitLabel(.search)
                     .focused($memberFieldFocused)
                     .onSubmit { triggerLookup() }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button {
-                                memberFieldFocused = false
-                            } label: {
-                                Image(systemName: "keyboard.chevron.compact.down")
-                                    .font(.title3)
-                            }
-                            .accessibilityLabel("Dismiss keyboard")
-                        }
-                    }
 
                 Button {
                     triggerLookup()

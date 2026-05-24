@@ -53,7 +53,6 @@ struct WhatIfPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            header
             projectedCard
             scoresList
             HypotheticalScoreForm()
@@ -61,20 +60,6 @@ struct WhatIfPanel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .refinedSurface()
-    }
-
-    @ViewBuilder
-    private var header: some View {
-        if hasChanges {
-            HStack {
-                Spacer()
-                Button("Reset") { appModel.resetScenario() }
-                    .font(.caption)
-                    .buttonStyle(.plain)
-                    .underline()
-                    .foregroundStyle(.secondary)
-            }
-        }
     }
 
     private var projectedCard: some View {
