@@ -7,56 +7,57 @@ struct OverviewTab: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                DivisionHeader()
+            ScrollView {
+                if let record = appModel.effectiveRecord {
+                    VStack(spacing: 16) {
+                        if let division = appModel.selectedDivision {
+                            SummaryCard(
+                                division: division,
+                                projectedPercent: appModel.projectedPercent,
+                                windowSize: appModel.windowSize,
+                                allTimeHighPercent: appModel.allTimeHighPercent,
+                                officialClass: appModel.officialClass,
+                                crossDivisionFloor: appModel.crossDivisionFloor
+                            )
 
-                ScrollView {
-                    if let record = appModel.effectiveRecord {
-                        VStack(spacing: 16) {
-                            if let division = appModel.selectedDivision {
-                                SummaryCard(
-                                    division: division,
-                                    projectedPercent: appModel.projectedPercent,
-                                    windowSize: appModel.windowSize,
-                                    allTimeHighPercent: appModel.allTimeHighPercent,
-                                    officialClass: appModel.officialClass,
-                                    crossDivisionFloor: appModel.crossDivisionFloor
-                                )
-
-                                if !appModel.warnings.isEmpty {
-                                    WarningBanner(warnings: appModel.warnings)
-                                }
-
-                                ProgressChartView(
-                                    classifiers: appModel.activeClassifiers,
-                                    history: appModel.classificationHistory
-                                )
-
-                                ClassUpInsightsView(
-                                    classifiers: appModel.activeClassifiers,
-                                    division: division,
-                                    officialClass: appModel.officialClass
-                                )
+                            if !appModel.warnings.isEmpty {
+                                WarningBanner(warnings: appModel.warnings)
                             }
 
-                            Text(recordFooter(record))
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                            ProgressChartView(
+                                classifiers: appModel.activeClassifiers,
+                                history: appModel.classificationHistory
+                            )
+
+                            ClassUpInsightsView(
+                                classifiers: appModel.activeClassifiers,
+                                division: division,
+                                officialClass: appModel.officialClass
+                            )
                         }
-                        .padding()
-                    } else {
-                        EmptyStateView(
-                            systemImage: "person.crop.circle.badge.questionmark",
-                            message: "No record loaded yet.",
-                            actionTitle: "Go to Lookup",
-                            action: { selectedTab = 0 }
-                        )
+
+                        Text(recordFooter(record))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
                     }
+                    .padding()
+                } else {
+                    EmptyStateView(
+                        systemImage: "person.crop.circle.badge.questionmark",
+                        message: "No record loaded yet.",
+                        actionTitle: "Go to Lookup",
+                        action: { selectedTab = 0 }
+                    )
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Overview")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    DivisionMenuButton(fallbackTitle: "Overview")
+                }
+            }
         }
     }
 

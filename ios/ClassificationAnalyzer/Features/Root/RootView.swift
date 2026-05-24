@@ -35,18 +35,6 @@ struct RootView: View {
     }
 }
 
-// Sticky division switcher shown above tabs that depend on a selected division.
-struct DivisionHeader: View {
-    @Environment(AppModel.self) private var appModel
-
-    var body: some View {
-        if appModel.effectiveRecord != nil {
-            DivisionPicker()
-                .padding(.vertical, 8)
-        }
-    }
-}
-
 struct EmptyStateView: View {
     let systemImage: String
     let message: String
