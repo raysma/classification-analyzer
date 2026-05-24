@@ -1,47 +1,160 @@
 import SwiftUI
 import USPSADomain
+import USPSARules
 
 struct SummaryCard: View {
-    let record: ShooterRecord
-    let division: Division?
+    let division: Division
+    let projectedPercent: Double?
+    let windowSize: Int
+    let allTimeHighPercent: Double?
+    let officialClass: ClassInfo?
+    let crossDivisionFloor: ClassLetter?
+
+    private var stickyLetter: ClassLetter {
+        stickyClassFor(currentPercent: projectedPercent, allTimeHighPercent: allTimeHighPercent)
+    }
+
+    private var computedLetter: ClassLetter {
+        if let floor = crossDivisionFloor {
+            return maxClass(stickyLetter, floor)
+        }
+        return stickyLetter
+    }
+
+    private var displayLetter: ClassLetter {
+        officialClass?.letter ?? computedLetter
+    }
+
+    private var displayPercent: Double? {
+        officialClass?.percent ?? projectedPercent
+    }
+
+    private var displayHighPercent: Double? {
+        officialClass?.highPercent ?? allTimeHighPercent
+    }
+
+    private var isEstimatedHigh: Bool {
+        officialClass == nil
+    }
+
+    private var showProjected: Bool {
+        guard let official = officialClass?.percent, let projected = projectedPercent else {
+            return false
+        }
+        return abs(official - projected) >= 0.01
+    }
+
+    private var gap: Double? {
+        guard let threshold = nextClassThreshold(displayLetter),
+              let percent = displayPercent
+        else { return nil }
+        let diff = threshold - percent
+        return diff > 0 ? diff : nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(record.name)
-                    .font(.title2.bold())
-                Text("Member \(record.memberNumber) · \(record.membershipType.rawValue)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("\(division.displayName) — Current classification")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
 
-            if let division, let info = record.currentClasses[division] {
-                HStack(alignment: .firstTextBaseline, spacing: 16) {
-                    Text(info.letter.rawValue)
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .frame(minWidth: 80, alignment: .leading)
+            if let percent = displayPercent {
+                HStack(alignment: .top, spacing: 16) {
+                    classBadge
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(division.displayName)
-                            .font(.headline)
-                        Text(String(format: "%.2f%%", info.percent))
-                            .font(.title3)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(String(format: "%.4f%%", percent))
+                            .font(.system(size: 30, weight: .bold))
+                            .monospacedDigit()
+
+                        if let gap, let threshold = nextClassThreshold(displayLetter) {
+                            Text(String(format: "%.4f%% to %g%%", gap, threshold))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if showProjected, let projected = projectedPercent {
+                            HStack(spacing: 4) {
+                                Text("Projected:")
+                                Text(String(format: "%.4f%%", projected))
+                                    .monospacedDigit()
+                                    .fontWeight(.medium)
+                                Text("(next stats run)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        Text("All-time high \(String(format: "%.2f%%", info.highPercent))")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .monospacedDigit()
+                        }
+
+                        if let high = displayHighPercent {
+                            HStack(spacing: 4) {
+                                Text("All-time high:")
+                                Text(String(format: "%.4f%%", high))
+                                    .monospacedDigit()
+                                    .fontWeight(.medium)
+                                if isEstimatedHigh {
+                                    Text("(estimated)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        }
+
+                        if displayLetter == .gm {
+                            Text("Grand Master — top class!")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.yellow)
+                        }
                     }
                 }
-            } else if division != nil {
-                Text("No current class in this division.")
-                    .foregroundStyle(.secondary)
+            } else {
+                Text(
+                    windowSize < 4
+                        ? "\(windowSize) of 4 scores needed — add \(4 - windowSize) more to get an initial classification."
+                        : "No classification yet."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
+
+            Text("\(windowSize) score\(windowSize == 1 ? "" : "s") in window")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var classBadge: some View {
+        Text(displayLetter.rawValue)
+            .font(.system(size: 22, weight: .bold))
+            .frame(width: 64, height: 64)
+            .background(classColor(displayLetter), in: Circle())
+            .foregroundStyle(classBadgeForeground(displayLetter))
+    }
+
+    private func classColor(_ letter: ClassLetter) -> Color {
+        switch letter {
+        case .gm: return .yellow
+        case .m: return .purple
+        case .a: return .blue
+        case .b: return .green
+        case .c: return .orange
+        case .d: return .red
+        case .u: return .gray
+        }
+    }
+
+    private func classBadgeForeground(_ letter: ClassLetter) -> Color {
+        switch letter {
+        case .gm: return Color(red: 0.4, green: 0.3, blue: 0.0)
+        case .u: return Color(white: 0.3)
+        default: return .white
+        }
     }
 }

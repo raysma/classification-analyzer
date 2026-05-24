@@ -8,6 +8,9 @@ struct ClassificationAnalyzerApp: App {
         WindowGroup {
             RootView()
                 .environment(appModel)
+                .onOpenURL { url in
+                    DeepLinkRouter.handle(url, into: appModel)
+                }
         }
     }
 }
