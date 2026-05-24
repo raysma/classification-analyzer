@@ -24,22 +24,26 @@ private let validFlagRawValues: Set<String> = Set(Flag.allCases.map(\.rawValue))
 
 // New 8-column USPSA 2025+ format:
 // Date  Number  Club  F  Percent  HF  Entered  Source
-private let newRowRegex = #/^(\d{1,2}\/\d{1,2}\/\d{2,4})\t([^\t]*)\t([^\t]*)\t([A-Z]?)\t([\d.]+)\t([^\t]*)\t[^\t]*\t([^\t]+)$/#
+//
+// Swift's Regex type isn't declared Sendable. The compiled patterns are
+// effectively immutable after construction, so nonisolated(unsafe) is the
+// correct escape hatch under Swift 6 strict concurrency.
+nonisolated(unsafe) private let newRowRegex = #/^(\d{1,2}\/\d{1,2}\/\d{2,4})\t([^\t]*)\t([^\t]*)\t([A-Z]?)\t([\d.]+)\t([^\t]*)\t[^\t]*\t([^\t]+)$/#
 
 // Old 7-column pre-2025 format club row:
 // Date  Code  Name  HF  %  Flag  Club
-private let oldClubRowRegex = #/^(\d{1,2}\/\d{1,2}\/\d{2,4})\t([^\t]+)\t([^\t]*)\t([\d.]*)\t([\d.]+)\t([A-Z]?)\t(.*)$/#
+nonisolated(unsafe) private let oldClubRowRegex = #/^(\d{1,2}\/\d{1,2}\/\d{2,4})\t([^\t]+)\t([^\t]*)\t([\d.]*)\t([\d.]+)\t([A-Z]?)\t(.*)$/#
 
 // Old major-match row (pre-2025): HF is empty, second col is literal "Major Match".
-private let oldMajorRowRegex = #/(?i)^(\d{1,2}\/\d{1,2}\/\d{2,4})\tMajor Match\t([^\t]*)\t\t([\d.]+)\t([A-Z]?)\t(.*)$/#
+nonisolated(unsafe) private let oldMajorRowRegex = #/(?i)^(\d{1,2}\/\d{1,2}\/\d{2,4})\tMajor Match\t([^\t]*)\t\t([\d.]+)\t([A-Z]?)\t(.*)$/#
 
 // Date header on either format starts with "date\t" (case-insensitive).
-private let headerRegex = #/(?i)^date\t/#
+nonisolated(unsafe) private let headerRegex = #/(?i)^date\t/#
 
 // New-format source column may say "Major Match" anywhere in it.
-private let newFormatMajorRegex = #/(?i)major\s*match/#
+nonisolated(unsafe) private let newFormatMajorRegex = #/(?i)major\s*match/#
 
-private let dateRegex = #/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/#
+nonisolated(unsafe) private let dateRegex = #/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/#
 
 public func parsePastedTable(_ input: String) throws -> ParsedPasteResult {
     var classifiers: [Classifier] = []
