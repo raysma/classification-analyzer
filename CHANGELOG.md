@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-05-24
+
+### New features
+
+- **Overview / What-If / Scores tabs**: the page is now split into three tabs so it doesn't sprawl down the screen on a long record. Lookup bar and division selector stay above the tabs as global context; switching tabs only swaps the section content. URL preserves the active tab via `?tab=`.
+- **Collapsible lookup bar**: once you've looked up a member, the lookup form and manual-paste section collapse into a one-line bar showing **Name · Member# · Type** with a *Change* toggle. Tap *Change* to drop the form back down (animated). Auto-collapses again after the next lookup.
+
+### Bug fixes
+
+- **Pushed-out scores no longer pile up in what-if**: the what-if panel no longer renders the struck-through "E" rows for scores that hypotheticals push out of the window — on long records those rows were bloating the panel without earning their visual weight.
+
 ## 2026-05-18
 
 ### Bug fixes
