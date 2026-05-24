@@ -268,8 +268,6 @@ function AppInner() {
 
         <ErrorBanner error={error} />
 
-        <TabNav currentTab={tab} onChange={setTab} />
-
         {record && (
           <div className="space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
@@ -294,6 +292,8 @@ function AppInner() {
               selected={selectedDivision}
               onSelect={(d) => setSelectedDivision(d)}
             />
+
+            <TabNav currentTab={tab} onChange={setTab} />
 
             {tab === 'overview' && selectedDivision && activeClassifiers.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -364,12 +364,6 @@ function AppInner() {
               </p>
             )}
           </div>
-        )}
-
-        {!record && tab !== 'overview' && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Look up a member on the Overview tab to use this view.
-          </p>
         )}
 
         <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500">
