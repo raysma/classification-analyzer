@@ -2,18 +2,15 @@ import { useAppStore } from '../../store/useAppStore'
 import HypotheticalScoreForm from './HypotheticalScoreForm'
 import { getCurrentWindow, classFor, bestSixOfRecentEight } from '../../lib/rules'
 import { classifierKey } from '../../lib/classifierKey'
-import { formatDivision } from '../../lib/formatters'
 import type { ValidatedClassifier } from '../../lib/validation'
 
 interface Props {
   windowScores: ValidatedClassifier[]
   currentPercent: number | null
-  division: string
 }
 
-export default function WhatIfPanel({ windowScores, currentPercent, division }: Props) {
-  const { hypotheticalScores, removeHypothetical, resetScenario, buildScenarioScores } =
-    useAppStore()
+export default function WhatIfPanel({ windowScores, currentPercent }: Props) {
+  const { hypotheticalScores, removeHypothetical, buildScenarioScores } = useAppStore()
 
   const scenarioScores = buildScenarioScores(windowScores)
   const scenarioWindow = getCurrentWindow(scenarioScores)
@@ -41,21 +38,6 @@ export default function WhatIfPanel({ windowScores, currentPercent, division }: 
 
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          What-if simulator — {formatDivision(division)}
-        </h3>
-        {hasChanges && (
-          <button
-            type="button"
-            onClick={resetScenario}
-            className="text-xs text-gray-500 dark:text-gray-400 underline hover:text-gray-700 dark:hover:text-gray-200"
-          >
-            Reset
-          </button>
-        )}
-      </div>
-
       {/* Projected result */}
       <div className="flex items-center gap-4 rounded-md bg-gray-50 dark:bg-gray-800 px-4 py-3">
         <div>
