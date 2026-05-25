@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-25
+
+### New features
+
+- **Recent lookups list**: a list of your last 10 lookups shows under the member-number input — tap to re-run, tap the trash to remove.
+
 ## 2026-05-24
 
 ### New features
