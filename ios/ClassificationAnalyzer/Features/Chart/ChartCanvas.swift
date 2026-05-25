@@ -151,31 +151,49 @@ struct ChartCanvas: View {
                     .font(.caption2)
             }
         }
-        .chartXSelection(value: $selectedDate)
         .chartPlotStyle { plot in
             plot.padding(.trailing, trailingPadding)
         }
-        // Use chartGesture (iOS 17+) instead of chartOverlay.onTapGesture —
-        // chartOverlay's tap gesture fights ScrollView gestures on iOS 18+
-        // and the tap gets swallowed by the scroll. Tap snaps to the nearest
-        // point if it's within 30pt; otherwise the selection is cleared so
-        // the hover card disappears without leaving the view.
+        // Combined gesture: tap snaps to the nearest point (or clears if the
+        // tap lands >30pt from any), long-press-and-drag scrubs Health/Stocks
+        // style. We drive selectedDate ourselves rather than relying on
+        // .chartXSelection(value:) because chartGesture overrides the
+        // built-in scrub gesture — having chartGesture with only a tap
+        // recognizer silently disabled press-and-drag entirely. The
+        // sequenced LongPress→Drag coexists with the surrounding ScrollView
+        // in inline mode because the long-press defers gesture ownership
+        // until after its activation threshold.
         .chartGesture { proxy in
-            SpatialTapGesture()
-                .onEnded { value in
-                    guard let (touchedDate, _): (Date, Double) = proxy.value(at: value.location)
-                    else { return }
-                    let nearest = pointData.min { a, b in
-                        abs(a.date.timeIntervalSince(touchedDate)) < abs(b.date.timeIntervalSince(touchedDate))
+            SimultaneousGesture(
+                SpatialTapGesture()
+                    .onEnded { value in
+                        guard let (touchedDate, _): (Date, Double) = proxy.value(at: value.location)
+                        else { return }
+                        let nearest = pointData.min { a, b in
+                            abs(a.date.timeIntervalSince(touchedDate)) < abs(b.date.timeIntervalSince(touchedDate))
+                        }
+                        if let nearest,
+                           let nearestX: CGFloat = proxy.position(forX: nearest.date),
+                           abs(nearestX - value.location.x) <= 30 {
+                            selectedDate = nearest.date
+                        } else {
+                            selectedDate = nil
+                        }
+                    },
+                LongPressGesture(minimumDuration: 0.15)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .onChanged { value in
+                        guard case .second(true, let drag?) = value else { return }
+                        guard let (touchedDate, _): (Date, Double) = proxy.value(at: drag.location)
+                        else { return }
+                        let nearest = pointData.min { a, b in
+                            abs(a.date.timeIntervalSince(touchedDate)) < abs(b.date.timeIntervalSince(touchedDate))
+                        }
+                        if let nearest {
+                            selectedDate = nearest.date
+                        }
                     }
-                    if let nearest,
-                       let nearestX: CGFloat = proxy.position(forX: nearest.date),
-                       abs(nearestX - value.location.x) <= 30 {
-                        selectedDate = nearest.date
-                    } else {
-                        selectedDate = nil
-                    }
-                }
+            )
         }
         // Apple Health / Stocks emit a selection haptic when scrubbing
         // across data points; match that.
@@ -187,6 +205,7 @@ struct ChartCanvas: View {
             if let selectedDate {
                 Text(selectedDate, format: .dateTime.month().day().year())
                     .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
             }
             ForEach(selectedPoints) { p in
                 HStack(spacing: 6) {
@@ -195,9 +214,10 @@ struct ChartCanvas: View {
                         .frame(width: 8, height: 8)
                     Text(p.code)
                         .font(.caption.monospaced())
+                        .foregroundStyle(.primary)
                     Text(String(format: "%.4f%%", p.percent))
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
             }
             if let avg = selectedAverage {
@@ -205,24 +225,30 @@ struct ChartCanvas: View {
                     Circle().fill(Color.cyan).frame(width: 8, height: 8)
                     Text("Classification")
                         .font(.caption)
+                        .foregroundStyle(.primary)
                     Text(String(format: "%.4f%%", avg))
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
             }
         }
         .padding(8)
-        // Solid Material backdrop, NOT glass — the chart card underneath is
-        // already glass on iOS 26 and Apple's Liquid Glass best practices say
-        // never stack glass on glass (glass can't sample other glass, so the
-        // annotation reads as invisible). Material + stroke + shadow gives
-        // the elevated tooltip card look Apple Health / Stocks use.
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        // Fully opaque background — neither glass nor material. Glass-on-glass
+        // is forbidden (chart card is already glass on iOS 26), and even
+        // .regularMaterial composites against the wrong backdrop inside chart
+        // annotations and renders darkish in both light and dark mode, killing
+        // text contrast. secondarySystemBackground is an opaque adaptive
+        // system color: light gray in light mode, dark gray in dark mode —
+        // matches Apple Health's tooltip card and guarantees text contrast.
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.secondarySystemBackground))
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(.separator, lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+        .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
     }
 
     private func isSelected(_ point: PointEntry) -> Bool {
