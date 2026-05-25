@@ -154,6 +154,28 @@ final class ClassificationHistoryTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(history.count, 2)
         XCTAssertNotNil(history.first?.date)
     }
+
+    // Two scores share a date: there must be exactly one snapshot for that
+    // date, and its percent must reflect both scores in the rolling window.
+    // Without this, the chart's classification line gets duplicate X values
+    // and a vertical jump within a single day.
+    func test_emits_one_snapshot_per_unique_date() {
+        let scores: [Classifier] = [
+            mkScore(60, date: "2024-01-01", code: "a"),
+            mkScore(70, date: "2024-02-01", code: "b"),
+            mkScore(80, date: "2024-03-01", code: "c"),
+            mkScore(50, date: "2024-04-01", code: "d"),
+            mkScore(90, date: "2024-04-01", code: "e"), // same date as previous
+        ]
+        let history = getClassificationHistory(scores)
+        let aprilEntries = history.filter { $0.date == "2024-04-01" }
+        XCTAssertEqual(aprilEntries.count, 1)
+        // End-of-day mean of all 5 scores: (60+70+80+50+90)/5 = 70.
+        XCTAssertEqual(aprilEntries.first?.percent, 70)
+        // Dates strictly distinct — no duplicates anywhere.
+        let dates = history.map(\.date)
+        XCTAssertEqual(Set(dates).count, dates.count)
+    }
 }
 
 final class AllTimeBestClassTests: XCTestCase {

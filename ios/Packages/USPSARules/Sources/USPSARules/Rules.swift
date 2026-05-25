@@ -107,8 +107,15 @@ public func getClassificationHistory(_ scores: [Classifier]) -> [ClassificationS
     let sorted = sortClassifiers(scores)
     var window = RollingWindow()
     var history: [ClassificationSnapshot] = []
-    for s in sorted {
+    // One snapshot per unique date — taken AFTER all of that date's scores
+    // have been folded into the rolling window. Snapshotting mid-day would
+    // produce duplicate X values when charted, making the classification
+    // line jump vertically within a single day.
+    for i in 0..<sorted.count {
+        let s = sorted[i]
         window.append(s)
+        let isLastOnDate = i == sorted.count - 1 || sorted[i + 1].date != s.date
+        guard isLastOnDate else { continue }
         if let pct = window.classificationScore() {
             let rounded = (pct * 100).rounded() / 100
             history.append(ClassificationSnapshot(
