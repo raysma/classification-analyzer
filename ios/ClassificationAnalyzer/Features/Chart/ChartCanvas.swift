@@ -81,6 +81,17 @@ struct ChartCanvas: View {
                     .accessibilityValue("\(Int(band.threshold)) percent")
             }
 
+            // Vertical scrub guide — visible only while a date is selected.
+            // Apple Health / Stocks pattern: long-press-and-drag activates
+            // chartXSelection, this rule visually tracks the finger position
+            // so the scrub reads as continuous interaction rather than a
+            // single tap-select.
+            if let selectedDate {
+                RuleMark(x: .value("Selected", selectedDate))
+                    .foregroundStyle(.secondary.opacity(0.45))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+            }
+
             ForEach(pointData) { point in
                 PointMark(
                     x: .value("Date", point.date),
@@ -201,7 +212,17 @@ struct ChartCanvas: View {
             }
         }
         .padding(8)
-        .refinedSurface(corner: 8)
+        // Solid Material backdrop, NOT glass — the chart card underneath is
+        // already glass on iOS 26 and Apple's Liquid Glass best practices say
+        // never stack glass on glass (glass can't sample other glass, so the
+        // annotation reads as invisible). Material + stroke + shadow gives
+        // the elevated tooltip card look Apple Health / Stocks use.
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(.separator, lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
     }
 
     private func isSelected(_ point: PointEntry) -> Bool {

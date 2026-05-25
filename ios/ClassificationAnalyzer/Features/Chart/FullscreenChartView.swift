@@ -40,7 +40,11 @@ struct FullscreenChartView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial, in: Circle())
+                    // Glass on iOS 26, .thinMaterial on iOS 18. The chart
+                    // marks underneath are abstract data (not a glass
+                    // surface), so this is a single-layer glass placement —
+                    // safe per Apple's "never stack glass on glass" rule.
+                    .refinedSurface(in: Circle())
             }
             .accessibilityLabel("Close")
             .padding()
