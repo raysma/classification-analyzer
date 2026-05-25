@@ -5,6 +5,7 @@ import USPSADomain
 import USPSARules
 
 private let selectedDivisionDefaultsKey = "selectedDivision"
+private let recentLookupsDefaultsKey = "recentLookups"
 
 private let canonicalDivisionOrder: [Division] = [
     .open, .limited, .limited10, .production, .revolver,
@@ -14,6 +15,8 @@ private let canonicalDivisionOrder: [Division] = [
 @MainActor
 @Observable
 final class AppModel {
+    static let recentLookupsCap = 10
+
     var memberNumber: String = ""
     var selectedDivision: Division? {
         didSet {
@@ -21,9 +24,9 @@ final class AppModel {
                 hypotheticalScores = []
             }
             if let raw = selectedDivision?.rawValue {
-                UserDefaults.standard.set(raw, forKey: selectedDivisionDefaultsKey)
+                defaults.set(raw, forKey: selectedDivisionDefaultsKey)
             } else {
-                UserDefaults.standard.removeObject(forKey: selectedDivisionDefaultsKey)
+                defaults.removeObject(forKey: selectedDivisionDefaultsKey)
             }
         }
     }
@@ -33,19 +36,33 @@ final class AppModel {
     var isLoading: Bool = false
     var lastError: ClassificationError?
     var hypotheticalScores: [HypotheticalScore] = []
+    var recentLookups: [RecentLookup] = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(recentLookups) {
+                defaults.set(data, forKey: recentLookupsDefaultsKey)
+            }
+        }
+    }
 
     private let client: ClassificationClient
+    private let defaults: UserDefaults
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
         let urlString = "https://classification.rmshooting.com"
         guard let url = URL(string: urlString) else {
             fatalError("Bad API base URL: \(urlString)")
         }
         self.client = ClassificationClient(baseURL: url)
+        self.defaults = defaults
 
-        if let raw = UserDefaults.standard.string(forKey: selectedDivisionDefaultsKey),
+        if let raw = defaults.string(forKey: selectedDivisionDefaultsKey),
            let div = Division(rawValue: raw) {
             self.selectedDivision = div
+        }
+
+        if let data = defaults.data(forKey: recentLookupsDefaultsKey),
+           let decoded = try? JSONDecoder().decode([RecentLookup].self, from: data) {
+            self.recentLookups = decoded
         }
     }
 
@@ -69,6 +86,7 @@ final class AppModel {
             fetchedRecord = response.record
             warnings = response.warnings
             reconcileSelectedDivision()
+            addRecent(from: response.record)
         } catch let error as ClassificationError {
             lastError = error
         } catch {
@@ -161,6 +179,28 @@ final class AppModel {
 
     var classificationHistory: [ClassificationSnapshot] {
         getClassificationHistory(activeClassifiers)
+    }
+
+    // MARK: Recent lookups
+    //
+    // Mirrors the web's `addRecentLookup` / `removeRecentLookup` semantics:
+    // fetch-only, dedup case-insensitively by member number, newest first,
+    // capped at 10. Persisted to UserDefaults via the property's didSet.
+
+    func addRecent(from record: ShooterRecord) {
+        guard record.source == .fetch else { return }
+        let key = record.memberNumber.uppercased()
+        var next = recentLookups.filter { $0.memberNumber.uppercased() != key }
+        next.insert(
+            RecentLookup(memberNumber: key, name: record.name, lastLookedUpAt: Date()),
+            at: 0
+        )
+        recentLookups = Array(next.prefix(Self.recentLookupsCap))
+    }
+
+    func removeRecent(memberNumber: String) {
+        let key = memberNumber.uppercased()
+        recentLookups.removeAll { $0.memberNumber.uppercased() == key }
     }
 
     // MARK: What-if scenario
