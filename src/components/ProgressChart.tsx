@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Customized,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 import type { ValidatedClassifier } from '../lib/validation'
@@ -68,11 +69,16 @@ function formatFullDate(val: number): string {
 }
 
 interface ScoreDatum {
-  x: number
   pct: number
   flag: string
   code: string
   cname: string | undefined
+}
+
+interface ChartRow {
+  x: number
+  avg: number | null
+  scores: ScoreDatum[]
 }
 
 interface Props {
@@ -90,35 +96,44 @@ export default function ProgressChart({ classifiers, history }: Props) {
   const tooltipBorder = isDark ? '#374151' : '#e5e7eb'
   const tooltipColor = isDark ? '#f3f4f6' : '#111827'
 
-  // Sort ascending; deduplicate by (date, code).
-  // Memoized so renderTooltip can capture it directly via closure deps.
-  const scoreData: ScoreDatum[] = useMemo(() => {
+  // Single unified data array — one row per unique date X. Recharts indexes
+  // every series off the chart-level `data` prop, so tooltip / activeLabel
+  // matching is unambiguous. Two parallel <Line> series with their own data
+  // props (where one has duplicate X values per date and the other doesn't)
+  // caused the classification value in the tooltip to flicker between mid-day
+  // and end-of-day values as the cursor crossed a score's vertical line.
+  const chartData: ChartRow[] = useMemo(() => {
+    const byX = new Map<number, ChartRow>()
     const seen = new Set<string>()
-    return [...classifiers]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .filter((c) => {
-        const key = `${c.date}:${c.classifierCode}`
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      .map((c) => ({
-        x: dateToNum(c.date),
+
+    for (const c of classifiers) {
+      const key = `${c.date}:${c.classifierCode}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const x = dateToNum(c.date)
+      const row = byX.get(x) ?? { x, avg: null, scores: [] }
+      row.scores.push({
         pct: c.percent,
         flag: c.flag,
         code: c.classifierCode,
         cname: c.classifierName,
-      }))
-  }, [classifiers])
+      })
+      byX.set(x, row)
+    }
 
-  const lineData = history.map((h) => ({
-    x: dateToNum(h.date),
-    avg: h.percent,
-  }))
+    for (const h of history) {
+      const x = dateToNum(h.date)
+      const row = byX.get(x) ?? { x, avg: null, scores: [] }
+      row.avg = h.percent
+      byX.set(x, row)
+    }
 
-  const allXValues = [...scoreData.map((d) => d.x), ...lineData.map((d) => d.x)]
-  const minX = allXValues.length > 0 ? Math.min(...allXValues) : Date.now()
-  const maxX = allXValues.length > 0 ? Math.max(...allXValues) : Date.now()
+    return [...byX.values()].sort((a, b) => a.x - b.x)
+  }, [classifiers, history])
+
+  const xs = chartData.map((r) => r.x)
+  const minX = xs.length > 0 ? xs[0]! : Date.now()
+  const maxX = xs.length > 0 ? xs[xs.length - 1]! : Date.now()
   const xPad = (maxX - minX) * 0.05 || 86400000
 
   const renderTooltip = useCallback(
@@ -126,13 +141,8 @@ export default function ProgressChart({ classifiers, history }: Props) {
       const { active, payload, label } = props
       if (!active || !payload?.length) return null
 
-      const avgItem = payload.find((p) => p.dataKey === 'avg')
-
-      // Show ALL classifiers on the active date, not just the one Recharts picked
-      const activeTimestamp = typeof label === 'number' ? label : null
-      const allOnDate = activeTimestamp !== null
-        ? scoreData.filter((d) => d.x === activeTimestamp)
-        : []
+      const row = payload[0]?.payload as ChartRow | undefined
+      if (!row) return null
 
       return (
         <div
@@ -148,20 +158,20 @@ export default function ProgressChart({ classifiers, history }: Props) {
           }}
         >
           <p style={{ fontWeight: 600, marginBottom: 2 }}>{formatFullDate(label as number)}</p>
-          {allOnDate.map((score) => (
+          {row.scores.map((score) => (
             <p key={score.code} style={{ color: SCORE_POINT_COLORS[classFor(score.pct)] }}>
               {score.code}: {score.pct.toFixed(4)}%
             </p>
           ))}
-          {avgItem && (
+          {row.avg !== null && (
             <p style={{ color: '#0ea5e9' }}>
-              Classification: {Number(avgItem.value).toFixed(4)}%
+              Classification: {row.avg.toFixed(4)}%
             </p>
           )}
         </div>
       )
     },
-    [tooltipBg, tooltipBorder, tooltipColor, scoreData],
+    [tooltipBg, tooltipBorder, tooltipColor],
   )
 
   return (
@@ -171,6 +181,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
       <div className="h-72 w-full rounded-md border border-gray-200 dark:border-gray-700 p-2">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
+            data={chartData}
             margin={{ top: 8, right: 48, bottom: 8, left: 0 }}
             onMouseMove={(state: { isTooltipActive?: boolean; activeLabel?: number | string }) => {
               if (state.isTooltipActive && typeof state.activeLabel === 'number') {
@@ -197,7 +208,10 @@ export default function ProgressChart({ classifiers, history }: Props) {
               width={40}
             />
             <Tooltip content={renderTooltip} isAnimationActive={false} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Legend
+              wrapperStyle={{ fontSize: 12 }}
+              payload={[{ value: 'Classification %', type: 'line', color: '#0ea5e9' }]}
+            />
 
             {CLASS_BANDS.map((band) => (
               <ReferenceLine
@@ -209,41 +223,8 @@ export default function ProgressChart({ classifiers, history }: Props) {
               />
             ))}
 
-            {/*
-             * strokeWidth=0 renders only dots, no connecting line.
-             * Line's tooltip uses nearest-x detection across the full chart width,
-             * so the tooltip fires reliably without needing pixel-perfect hover over a dot.
-             * (Scatter's tooltip uses exact x-value matching which fails with unique timestamps.)
-             */}
-            <Line
-              data={scoreData}
-              dataKey="pct"
-              strokeWidth={0}
-              isAnimationActive={false}
-              legendType="none"
-              dot={(props: unknown) => {
-                const p = props as { cx: number; cy: number; payload: ScoreDatum }
-                const color = SCORE_POINT_COLORS[classFor(p.payload.pct)]
-                const isActive = p.payload.x === activeX
-                return (
-                  <circle
-                    key={`dot-${p.payload.x}-${p.payload.code}`}
-                    cx={p.cx}
-                    cy={p.cy}
-                    r={isActive ? 7 : 5}
-                    fill={color}
-                    stroke={isActive ? 'white' : 'none'}
-                    strokeWidth={isActive ? 2 : 0}
-                    opacity={isActive ? 0.95 : 0.85}
-                  />
-                )
-              }}
-              activeDot={false}
-            />
-
             <Line
               name="Classification %"
-              data={lineData}
               dataKey="avg"
               type="monotone"
               stroke="#0ea5e9"
@@ -251,7 +232,53 @@ export default function ProgressChart({ classifiers, history }: Props) {
               dot={false}
               activeDot={false}
               connectNulls
+              isAnimationActive={false}
             />
+
+            {/*
+             * Score dots are rendered via Customized rather than a second
+             * <Line> series. A second Line with its own `data` prop confuses
+             * Recharts' tooltip activeIndex (it ends up mapping series by
+             * index instead of by X-value), and a Line whose data shares
+             * `chartData` can only render one dot per row — but a single
+             * date can carry multiple classifiers. Customized has direct
+             * access to the axis scales, so we can project every score's
+             * (x, pct) to pixels and draw one circle per classifier.
+             */}
+            <Customized component={(chartProps: unknown) => {
+              const { xAxisMap, yAxisMap } = chartProps as {
+                xAxisMap?: Record<string, { scale?: (v: number) => number }>
+                yAxisMap?: Record<string, { scale?: (v: number) => number }>
+              }
+              const xScale = xAxisMap ? Object.values(xAxisMap)[0]?.scale : undefined
+              const yScale = yAxisMap ? Object.values(yAxisMap)[0]?.scale : undefined
+              if (!xScale || !yScale) return null
+              return (
+                <g>
+                  {chartData.flatMap((row) =>
+                    row.scores.map((score) => {
+                      const cx = xScale(row.x)
+                      const cy = yScale(score.pct)
+                      const color = SCORE_POINT_COLORS[classFor(score.pct)]
+                      const isActive = row.x === activeX
+                      return (
+                        <circle
+                          key={`dot-${row.x}-${score.code}`}
+                          cx={cx}
+                          cy={cy}
+                          r={isActive ? 7 : 5}
+                          fill={color}
+                          stroke={isActive ? 'white' : 'none'}
+                          strokeWidth={isActive ? 2 : 0}
+                          opacity={isActive ? 0.95 : 0.85}
+                          style={{ pointerEvents: 'none' }}
+                        />
+                      )
+                    }),
+                  )}
+                </g>
+              )
+            }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

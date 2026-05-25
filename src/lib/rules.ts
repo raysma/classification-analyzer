@@ -106,13 +106,20 @@ export function getCurrentWindow(scores: ValidatedClassifier[]): RollingWindow {
   return window
 }
 
+// One snapshot per unique date — taken AFTER all of that date's scores have been
+// folded into the rolling window. Snapshotting mid-day would produce duplicate
+// X values when charted, which makes the tooltip flicker between values
+// depending on which side of the score-line the cursor is on.
 export function getClassificationHistory(scores: ValidatedClassifier[]): ClassificationSnapshot[] {
   const sorted = sortClassifiers(scores)
   const window = new RollingWindow()
   const history: ClassificationSnapshot[] = []
 
-  for (const s of sorted) {
+  for (let i = 0; i < sorted.length; i++) {
+    const s = sorted[i]!
     window.append(s)
+    const isLastOnDate = i === sorted.length - 1 || sorted[i + 1]!.date !== s.date
+    if (!isLastOnDate) continue
     const pct = window.classificationScore()
     if (pct !== null) {
       history.push({
