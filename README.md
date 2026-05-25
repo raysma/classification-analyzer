@@ -37,6 +37,17 @@ pnpm dev:api      # Vercel dev for the proxy function (separate terminal)
 | `pnpm format` | Prettier |
 | `pnpm typecheck` | TypeScript check |
 
+## Environment variables
+
+The serverless functions read the following from Vercel project env vars:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `ZYTE_API_KEY` | yes | Auth for the USPSA fetch proxy (`api/classification.ts`). |
+| `SENTRY_DSN` | no | Server-side error reporting. When unset, errors are logged but not sent to Sentry. |
+| `GITHUB_TOKEN` | yes (for feedback) | Fine-grained PAT scoped to `raysma/classification-analyzer` with `issues:write` only. Used by `api/feedback.ts` to file in-app feedback as GitHub Issues. |
+| `FEEDBACK_REPO` | no | Override for the feedback issue target repo (default `raysma/classification-analyzer`). Useful for testing against a throwaway repo. |
+
 ## Architecture
 
 See [CLAUDE.md](CLAUDE.md) for full architecture, tech stack, and coding conventions.

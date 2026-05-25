@@ -19,6 +19,7 @@ import WhatIfPanel from './components/whatif/WhatIfPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
+import FeedbackModal from './components/FeedbackModal'
 import { readUrlState, useUrlSync, type Tab } from './lib/urlState'
 import {
   getCurrentWindow,
@@ -183,6 +184,7 @@ function ErrorBanner({ error }: { error: unknown }) {
 
 function AppInner() {
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
   const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
   const [lookupExpanded, setLookupExpanded] = useState(true)
 
@@ -435,7 +437,8 @@ function AppInner() {
           </div>
         )}
 
-        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500">
+        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500 space-y-2">
+          <p>Crafted with love for the shooting community.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               type="button"
@@ -445,7 +448,13 @@ function AppInner() {
               What&apos;s new
             </button>
             <span aria-hidden="true">·</span>
-            <span>Crafted with love for the shooting community.</span>
+            <button
+              type="button"
+              onClick={() => setShowFeedback(true)}
+              className="hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Feedback
+            </button>
             <span aria-hidden="true">·</span>
             <a
               href="https://github.com/raysma/classification-analyzer"
@@ -458,6 +467,7 @@ function AppInner() {
           </div>
         </footer>
         {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+        {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
       </main>
     </div>
   )
