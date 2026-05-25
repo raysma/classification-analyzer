@@ -4,6 +4,7 @@
 
 ### New features
 
+- **Recent lookups list**: a list of your last 10 lookups shows under the member-number input — tap to re-run, tap the trash to remove.
 - **Feedback widget**: a *Feedback* link in the footer opens a small modal where you can file a bug, feature request, or general comment. Submissions become public GitHub Issues in `raysma/classification-analyzer` and include auto-attached app version, current URL, division, browser, and viewport size to help with reproduction.
 
 ## 2026-05-24

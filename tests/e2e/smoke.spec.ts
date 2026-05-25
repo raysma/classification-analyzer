@@ -41,4 +41,34 @@ test.describe('smoke', () => {
     await page.goto('/#about')
     await expect(page.getByRole('heading', { name: 'About' })).toBeVisible()
   })
+
+  test('recent lookups list renders persisted entries and supports delete', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'classification-analyzer-app',
+        JSON.stringify({
+          state: {
+            selectedDivision: null,
+            recentLookups: [
+              {
+                memberNumber: 'A12345',
+                name: 'Test Shooter',
+                lastLookedUpAt: new Date().toISOString(),
+              },
+            ],
+          },
+          version: 2,
+        }),
+      )
+    })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: /recent lookups/i })).toBeVisible()
+    await expect(page.getByText('A12345')).toBeVisible()
+    await expect(page.getByText('Test Shooter')).toBeVisible()
+
+    await page
+      .getByRole('button', { name: /remove a12345 from recent lookups/i })
+      .click()
+    await expect(page.getByRole('heading', { name: /recent lookups/i })).toBeHidden()
+  })
 })
