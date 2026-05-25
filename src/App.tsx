@@ -9,6 +9,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { useAppStore } from './store/useAppStore'
 import { fetchClassification, ClassificationError } from './api/classification'
 import LookupForm from './components/LookupForm'
+import RecentLookups from './components/RecentLookups'
 import DivisionTabs from './components/DivisionTabs'
 import ClassifierTable from './components/ClassifierTable'
 import SummaryCard from './components/SummaryCard'
@@ -19,6 +20,7 @@ import WhatIfPanel from './components/whatif/WhatIfPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
+import FeedbackModal from './components/FeedbackModal'
 import { readUrlState, useUrlSync, type Tab } from './lib/urlState'
 import {
   getCurrentWindow,
@@ -183,6 +185,7 @@ function ErrorBanner({ error }: { error: unknown }) {
 
 function AppInner() {
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
   const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
   const [lookupExpanded, setLookupExpanded] = useState(true)
 
@@ -196,6 +199,7 @@ function AppInner() {
     setPastedRecord,
     setWarnings,
     dismissWarnings,
+    addRecentLookup,
   } = useAppStore()
 
   // Restore URL state on mount — auto-fetch if member number is in URL
@@ -221,6 +225,12 @@ function AppInner() {
 
   // Fetched record takes priority over pasted record
   const record = data?.record ?? pastedRecord ?? null
+
+  useEffect(() => {
+    if (data?.record && data.record.source === 'fetch') {
+      addRecentLookup(data.record.memberNumber, data.record.name)
+    }
+  }, [data?.record, addRecentLookup])
 
   // Once we have a record, collapse the lookup form so it doesn't dominate
   // vertical space. User reopens with the Change button.
@@ -301,6 +311,7 @@ function AppInner() {
               <div className="overflow-hidden">
                 <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-4 py-4 space-y-6">
                   <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+                  <RecentLookups onSelect={handleLookup} disabled={isFetching} />
 
                   {isFetching && !data && memberNumber && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
@@ -319,6 +330,7 @@ function AppInner() {
         ) : (
           <div className="space-y-6">
             <LookupForm onSubmit={handleLookup} isLoading={isFetching && !data} initialMember={readUrlState().memberNumber ?? ''} />
+            <RecentLookups onSelect={handleLookup} disabled={isFetching} />
 
             {isFetching && !data && memberNumber && (
               <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
@@ -409,7 +421,6 @@ function AppInner() {
               <WhatIfPanel
                 windowScores={windowScores}
                 currentPercent={currentPercent}
-                division={selectedDivision}
               />
             )}
 
@@ -436,7 +447,8 @@ function AppInner() {
           </div>
         )}
 
-        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500">
+        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500 space-y-2">
+          <p>Crafted with love for the shooting community.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               type="button"
@@ -446,7 +458,13 @@ function AppInner() {
               What&apos;s new
             </button>
             <span aria-hidden="true">·</span>
-            <span>Crafted with love for the shooting community.</span>
+            <button
+              type="button"
+              onClick={() => setShowFeedback(true)}
+              className="hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Feedback
+            </button>
             <span aria-hidden="true">·</span>
             <a
               href="https://github.com/raysma/classification-analyzer"
@@ -459,6 +477,7 @@ function AppInner() {
           </div>
         </footer>
         {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+        {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
       </main>
     </div>
   )

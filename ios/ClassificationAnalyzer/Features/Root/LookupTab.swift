@@ -19,9 +19,8 @@ struct LookupTab: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         lookupCard(memberNumber: $model.memberNumber)
+                        RecentsList(selectedTab: $selectedTab)
                         pasteCard
-                        // Recents list lands here in a follow-up — last N member
-                        // numbers persisted to UserDefaults, tap to re-fetch.
                     }
                     .padding()
                     .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)

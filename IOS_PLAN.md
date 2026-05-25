@@ -138,3 +138,89 @@ Path filters keep macOS runner minutes lean: `ios` job only runs when `ios/**` o
 - `/home/user/classification-analyzer/src/store/useAppStore.ts`
 - `/home/user/classification-analyzer/src/api/classification.ts`
 - `/home/user/classification-analyzer/api/classification.ts` (error code contract)
+
+---
+
+# Recent member-number lookups (handoff brief)
+
+## Context
+
+The web app (shipped on `main`) persists the user's recent successful lookups so they don't have to re-type member numbers. We want the same behavior on iOS. This is **not a cache** — entries are just `{ memberNumber, name, lastLookedUpAt }` metadata; tapping a recent always re-issues the network fetch, so any classification record change shows up on the next view. The iOS app already has in-flight request memoization in `ClassificationClient`, which is untouched.
+
+## Rules (mirrored from the web implementation)
+
+- Added/updated only on a **successful network fetch**. Paste records are excluded.
+- Dedup by canonical (uppercased) `memberNumber`. Re-lookup updates `name` and `lastLookedUpAt`, moves entry to the top.
+- Sort newest first. **Cap at 10**; oldest evicted on overflow.
+- User can delete any entry; deletion does not prevent re-adding by performing a new lookup.
+- Persisted via `UserDefaults` (matches the existing `selectedDivision` pattern in `AppModel`). No cross-device sync.
+
+## Files to add / modify
+
+### 1. New type: `ios/ClassificationAnalyzer/App/RecentLookup.swift`
+
+```swift
+public struct RecentLookup: Codable, Sendable, Hashable, Identifiable {
+    public let memberNumber: String
+    public let name: String
+    public let lastLookedUpAt: Date
+    public var id: String { memberNumber }
+}
+```
+
+### 2. `ios/ClassificationAnalyzer/App/AppModel.swift`
+
+Already an `@Observable @MainActor` class. Add:
+
+- `var recentLookups: [RecentLookup] = []` property
+- `static let recentLookupsCap = 10`
+- On `init()`: decode from `UserDefaults.standard` key `"recentLookups"` via `JSONDecoder` (fall back to `[]` on missing/corrupt). Mirrors the existing `selectedDivision` pattern around lines 24–27.
+- `didSet` on the property (or explicit save call) that encodes via `JSONEncoder` back to `UserDefaults`.
+- `func addRecent(from record: ShooterRecord)` — uppercases `memberNumber`, removes any existing match, prepends a new `RecentLookup(memberNumber:, name:, lastLookedUpAt: .now)`, truncates to `recentLookupsCap`. Skip when the record originated from paste (`record.source != .fetch`).
+- `func removeRecent(memberNumber: String)` — filters by uppercased key.
+
+Call `addRecent(from:)` from the existing `lookup()` action immediately after the successful fetch is assigned to `fetchedRecord`.
+
+### 3. `ios/ClassificationAnalyzer/Features/Root/LookupTab.swift`
+
+The file already has a marker around line 44: `// Recents list lands here...`. Render a section there gated on `!appModel.recentLookups.isEmpty`:
+
+- A `List` / `ForEach(appModel.recentLookups)` of tappable rows.
+- Each row displays **member number as primary text** (monospaced), **shooter name as secondary** (smaller, muted), and a `.relative`-formatted `lastLookedUpAt`:
+  ```swift
+  Text(entry.lastLookedUpAt, format: .relative(presentation: .named))
+  ```
+- Tap → set `appModel.memberNumber = entry.memberNumber` and call `Task { await appModel.lookup() }`. Same path as the form submit, so the existing auto-switch-to-Overview behavior carries over.
+- `.swipeActions(edge: .trailing)` with a destructive Delete button calling `appModel.removeRecent(memberNumber:)`. Consider also a trailing trash button for discoverability.
+
+Routing through `DeepLinkRouter.handle()` is **not** necessary — direct state mutation is simpler than constructing a synthetic URL.
+
+## Tests
+
+Add `ios/ClassificationAnalyzerTests/AppModelRecentLookupsTests.swift` (or whatever the existing app-target test location is). Cover:
+
+- `addRecent` prepends to front and uppercases the key
+- Duplicate member number (case-insensitive) dedupes + moves to top + refreshes `name` + `lastLookedUpAt`
+- Cap-at-10 eviction of the oldest entry
+- `removeRecent` is case-insensitive and a no-op when absent
+- Paste-source records are skipped
+- Persistence round-trip: write entries, reconstruct an `AppModel`, confirm `recentLookups` is restored from `UserDefaults`
+
+## Verification
+
+1. `xcodebuild test` — `AppModelRecentLookupsTests` green.
+2. Run in simulator: look up a member; force-quit and relaunch — confirm the row persists in the Lookup tab.
+3. Swipe to delete; relaunch; confirm it stays deleted.
+4. Tap a recent row and confirm Overview tab auto-switches (mirroring the form-submit flow).
+5. Look up a paste record — confirm it does **not** appear in the list.
+
+## Reference: web implementation already shipped
+
+Web equivalents on `main` for cross-reference:
+
+- Type: `src/types/index.ts` — `RecentLookup` interface
+- Store: `src/store/useAppStore.ts` — `addRecentLookup` / `removeRecentLookup` / `RECENT_LOOKUPS_CAP = 10`, persisted via Zustand's `persist` middleware
+- Component: `src/components/RecentLookups.tsx`
+- Wiring: `src/App.tsx` — `useEffect` watching `data?.record` with `source === 'fetch'` guard
+- Tests: `src/store/useAppStore.test.ts`
+

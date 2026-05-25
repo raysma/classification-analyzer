@@ -55,3 +55,9 @@ export interface ClassificationSnapshot {
   percent: number
   classLetter: ClassLetter
 }
+
+export interface RecentLookup {
+  memberNumber: string
+  name: string
+  lastLookedUpAt: string
+}
