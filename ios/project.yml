@@ -63,7 +63,7 @@ targets:
       properties:
         CFBundleDisplayName: Classification Analyzer
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "14"
+        CFBundleVersion: "15"
         LSRequiresIPhoneOS: true
         UILaunchScreen:
           UIColorName: LaunchBackground
