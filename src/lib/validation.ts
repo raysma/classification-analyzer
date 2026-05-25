@@ -45,3 +45,32 @@ export const ShooterRecordSchema = z.object({
 
 export type ValidatedClassifier = z.infer<typeof ClassifierSchema>
 export type ValidatedShooterRecord = z.infer<typeof ShooterRecordSchema>
+
+export const FeedbackTypeSchema = z.enum(['bug', 'feature_request', 'other'])
+
+export const FeedbackContextSchema = z.object({
+  appSha: z.string().max(64).nullable(),
+  url: z.string().url().max(2048),
+  memberNumber: z.string().max(20).nullable(),
+  division: DivisionSchema.nullable(),
+  userAgent: z.string().max(500),
+  viewport: z.string().regex(/^\d+x\d+$/),
+  timestamp: z.string().min(1).max(40),
+})
+
+export const FeedbackInputSchema = z.object({
+  type: FeedbackTypeSchema,
+  title: z.string().trim().min(3).max(120),
+  description: z.string().trim().min(10).max(4000),
+  context: FeedbackContextSchema,
+})
+
+export const FeedbackResponseSchema = z.object({
+  ok: z.literal(true),
+  issueUrl: z.string().url(),
+  issueNumber: z.number().int().positive(),
+})
+
+export type FeedbackType = z.infer<typeof FeedbackTypeSchema>
+export type FeedbackContext = z.infer<typeof FeedbackContextSchema>
+export type FeedbackInput = z.infer<typeof FeedbackInputSchema>

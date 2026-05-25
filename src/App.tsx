@@ -19,6 +19,7 @@ import WhatIfPanel from './components/whatif/WhatIfPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
+import FeedbackModal from './components/FeedbackModal'
 import { readUrlState, useUrlSync, type Tab } from './lib/urlState'
 import {
   getCurrentWindow,
@@ -183,6 +184,7 @@ function ErrorBanner({ error }: { error: unknown }) {
 
 function AppInner() {
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
   const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
   const [lookupExpanded, setLookupExpanded] = useState(true)
 
@@ -445,6 +447,14 @@ function AppInner() {
               What&apos;s new
             </button>
             <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              onClick={() => setShowFeedback(true)}
+              className="hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Feedback
+            </button>
+            <span aria-hidden="true">·</span>
             <span>Crafted with love for the shooting community.</span>
             <span aria-hidden="true">·</span>
             <a
@@ -458,6 +468,7 @@ function AppInner() {
           </div>
         </footer>
         {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+        {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
       </main>
     </div>
   )
