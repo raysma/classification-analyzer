@@ -8,7 +8,7 @@ export interface HypotheticalScore {
   percent: number
 }
 
-export const RECENT_LOOKUPS_CAP = 25
+export const RECENT_LOOKUPS_CAP = 10
 
 interface AppState {
   memberNumber: string
