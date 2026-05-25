@@ -48,6 +48,45 @@ describe('FeedbackModal', () => {
     })
   })
 
+  it('sends a fully-null context when the anonymous checkbox is checked', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            issueUrl: 'https://github.com/o/r/issues/9',
+            issueNumber: 9,
+          }),
+          { status: 200 },
+        ),
+    )
+    globalThis.fetch = fetchSpy
+    render(<FeedbackModal onClose={() => {}} />)
+    fireEvent.change(screen.getByLabelText(/title/i), {
+      target: { value: 'A reasonable title' },
+    })
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: 'A reasonable description of the issue.' },
+    })
+    fireEvent.click(screen.getByLabelText(/submit anonymously/i))
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }))
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled()
+    })
+    const init = fetchSpy.mock.calls[0]![1] as RequestInit
+    const sent = JSON.parse(String(init.body)) as {
+      context: Record<string, unknown>
+    }
+    expect(sent.context.appSha).toBeNull()
+    expect(sent.context.url).toBeNull()
+    expect(sent.context.memberNumber).toBeNull()
+    expect(sent.context.division).toBeNull()
+    expect(sent.context.userAgent).toBeNull()
+    expect(sent.context.viewport).toBeNull()
+    expect(typeof sent.context.timestamp).toBe('string')
+  })
+
   it('renders the success pane with an issue link on 200', async () => {
     globalThis.fetch = vi.fn<typeof fetch>(
       async () =>

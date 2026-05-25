@@ -231,6 +231,41 @@ describe('feedback endpoint', () => {
     expect(res6.body).toEqual({ error: 'rate_limited' })
   })
 
+  it('accepts a fully-null (anonymous) context and renders _redacted_', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({ html_url: 'https://github.com/o/r/issues/2', number: 2 }),
+          { status: 201 },
+        ),
+    )
+    globalThis.fetch = fetchSpy
+    const body = {
+      type: 'other' as const,
+      title: 'Anonymous report',
+      description: 'No telemetry attached please.',
+      context: {
+        appSha: null,
+        url: null,
+        memberNumber: null,
+        division: null,
+        userAgent: null,
+        viewport: null,
+        timestamp: '2026-05-25T14:33:01.123Z',
+      },
+    }
+    const req = makeReq({ body }, '10.0.2.0')
+    const res = makeRes()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handler(req as any, res as any)
+    expect(res.statusCode).toBe(200)
+    const sent = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body)) as { body: string }
+    expect(sent.body).toContain('**URL:** _redacted_')
+    expect(sent.body).toContain('**App version:** _redacted_')
+    expect(sent.body).toContain('**User agent:** _redacted_')
+    expect(sent.body).toContain('**Viewport:** _redacted_')
+  })
+
   it('strips backticks from title', async () => {
     const fetchSpy = vi.fn<typeof fetch>(
       async () =>

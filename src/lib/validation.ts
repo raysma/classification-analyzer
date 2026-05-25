@@ -50,11 +50,11 @@ export const FeedbackTypeSchema = z.enum(['bug', 'feature_request', 'other'])
 
 export const FeedbackContextSchema = z.object({
   appSha: z.string().max(64).nullable(),
-  url: z.string().url().max(2048),
+  url: z.string().url().max(2048).nullable(),
   memberNumber: z.string().max(20).nullable(),
   division: DivisionSchema.nullable(),
-  userAgent: z.string().max(500),
-  viewport: z.string().regex(/^\d+x\d+$/),
+  userAgent: z.string().max(500).nullable(),
+  viewport: z.string().regex(/^\d+x\d+$/).nullable(),
   timestamp: z.string().min(1).max(40),
 })
 

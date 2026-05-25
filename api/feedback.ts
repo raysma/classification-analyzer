@@ -81,6 +81,7 @@ function buildIssueBody(input: FeedbackInput): string {
     input.type === 'bug' ? 'Bug' : input.type === 'feature_request' ? 'Feature request' : 'Other'
   const desc = normalizeMultiline(input.description)
   const ctx = input.context
+  const redacted = '_redacted_'
   return `**Type:** ${typeLabel}
 
 ${desc}
@@ -90,12 +91,12 @@ ${desc}
 <details>
 <summary>Auto-attached context</summary>
 
-- **App version:** ${ctx.appSha ? `\`${ctx.appSha.slice(0, 7)}\`` : '`unknown`'}
-- **URL:** ${ctx.url}
-- **Member number:** ${ctx.memberNumber ?? 'none'}
-- **Division:** ${ctx.division ?? 'none'}
-- **Viewport:** ${ctx.viewport}
-- **User agent:** \`${stripBackticks(ctx.userAgent)}\`
+- **App version:** ${ctx.appSha ? `\`${ctx.appSha.slice(0, 7)}\`` : redacted}
+- **URL:** ${ctx.url ?? redacted}
+- **Member number:** ${ctx.memberNumber ?? redacted}
+- **Division:** ${ctx.division ?? redacted}
+- **Viewport:** ${ctx.viewport ?? redacted}
+- **User agent:** ${ctx.userAgent ? `\`${stripBackticks(ctx.userAgent)}\`` : redacted}
 - **Submitted:** ${ctx.timestamp}
 
 </details>

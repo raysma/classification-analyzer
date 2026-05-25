@@ -44,7 +44,19 @@ function friendlyError(code: string): string {
   }
 }
 
-function buildContext(): FeedbackInput['context'] {
+function buildContext(anonymous: boolean): FeedbackInput['context'] {
+  const timestamp = new Date().toISOString()
+  if (anonymous) {
+    return {
+      appSha: null,
+      url: null,
+      memberNumber: null,
+      division: null,
+      userAgent: null,
+      viewport: null,
+      timestamp,
+    }
+  }
   const state = useAppStore.getState()
   const sha = (import.meta.env['VITE_APP_SHA'] as string | undefined) ?? null
   return {
@@ -54,7 +66,7 @@ function buildContext(): FeedbackInput['context'] {
     division: state.selectedDivision,
     userAgent: navigator.userAgent.slice(0, 500),
     viewport: `${window.innerWidth}x${window.innerHeight}`,
-    timestamp: new Date().toISOString(),
+    timestamp,
   }
 }
 
@@ -63,6 +75,7 @@ export default function FeedbackModal({ onClose }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [anonymous, setAnonymous] = useState(false)
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [success, setSuccess] = useState<{ issueUrl: string; issueNumber: number } | null>(null)
 
@@ -82,7 +95,7 @@ export default function FeedbackModal({ onClose }: Props) {
         type,
         title: trimmedTitle,
         description: trimmedDesc,
-        context: buildContext(),
+        context: buildContext(anonymous),
       })
       setSuccess(result)
     } catch (err) {
@@ -168,10 +181,14 @@ export default function FeedbackModal({ onClose }: Props) {
                 value={type}
                 onChange={(e) => setType(e.target.value as FeedbackType)}
                 disabled={submitting}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {TYPE_LABELS.map((t) => (
-                  <option key={t.value} value={t.value}>
+                  <option
+                    key={t.value}
+                    value={t.value}
+                    className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  >
                     {t.label}
                   </option>
                 ))}
@@ -193,7 +210,7 @@ export default function FeedbackModal({ onClose }: Props) {
                 disabled={submitting}
                 maxLength={TITLE_MAX}
                 placeholder="Short summary"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
                 {trimmedTitle.length}/{TITLE_MAX}
@@ -215,17 +232,33 @@ export default function FeedbackModal({ onClose }: Props) {
                 rows={6}
                 maxLength={DESC_MAX}
                 placeholder="What happened, what you expected, steps to reproduce…"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
                 {trimmedDesc.length}/{DESC_MAX}
               </p>
             </div>
 
-            <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-              Submissions become public GitHub Issues. We attach your app version, the current URL
-              (which may contain your member number), division, browser, and viewport size to help
-              reproduce issues. Don&apos;t include anything you don&apos;t want public.
+            <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-200 space-y-2">
+              <p>
+                Submissions become public GitHub Issues. We attach your app version, the current
+                URL (which may contain your member number), division, browser, and viewport size
+                to help reproduce issues. Don&apos;t include anything that you don&apos;t want to
+                be made public.
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={anonymous}
+                  onChange={(e) => setAnonymous(e.target.checked)}
+                  disabled={submitting}
+                  className="mt-0.5 rounded border-amber-300 dark:border-amber-700 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  Submit anonymously — don&apos;t attach app version, URL, member number, division,
+                  browser, or viewport size.
+                </span>
+              </label>
             </div>
 
             {errorCode && (
