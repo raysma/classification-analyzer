@@ -437,7 +437,8 @@ function AppInner() {
           </div>
         )}
 
-        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500">
+        <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500 space-y-2">
+          <p>Crafted with love for the shooting community.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               type="button"
@@ -454,8 +455,6 @@ function AppInner() {
             >
               Feedback
             </button>
-            <span aria-hidden="true">·</span>
-            <span>Crafted with love for the shooting community.</span>
             <span aria-hidden="true">·</span>
             <a
               href="https://github.com/raysma/classification-analyzer"
