@@ -81,15 +81,24 @@ struct ChartCanvas: View {
                     .accessibilityValue("\(Int(band.threshold)) percent")
             }
 
-            // Vertical scrub guide — visible only while a date is selected.
-            // Apple Health / Stocks pattern: long-press-and-drag activates
-            // chartXSelection, this rule visually tracks the finger position
-            // so the scrub reads as continuous interaction rather than a
-            // single tap-select.
+            // Vertical scrub guide + tooltip anchor. Annotation lives on the
+            // RuleMark (not on a PointMark) so the card always floats at the
+            // top of the chart instead of jumping vertically with whichever
+            // dot we selected. y: .fit(to: .chart) clamps the card inside the
+            // chart bounds — without that, multi-score days produced a tall
+            // card that escaped over the classification card above.
             if let selectedDate {
                 RuleMark(x: .value("Selected", selectedDate))
                     .foregroundStyle(.secondary.opacity(0.45))
                     .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(
+                        position: .top,
+                        alignment: .center,
+                        spacing: 0,
+                        overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
+                    ) {
+                        hoverCard
+                    }
             }
 
             ForEach(pointData) { point in
@@ -100,19 +109,6 @@ struct ChartCanvas: View {
                 .foregroundStyle(color(for: classFor(point.percent)))
                 .symbolSize(isSelected(point) ? 110 : 50)
                 .opacity(selectedDate == nil || isSelected(point) ? 1.0 : 0.55)
-                // Annotation tracks the selected point and stays inside the
-                // chart bounds via overflowResolution. Only the first sorted
-                // point on the selected date renders the card so we get one
-                // card per selection, not one per matching dot.
-                .annotation(
-                    position: .automatic,
-                    alignment: .center,
-                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
-                ) {
-                    if isHoverAnchor(point) {
-                        hoverCard
-                    }
-                }
                 .accessibilityLabel(accessibilityLabel(for: point))
                 .accessibilityValue(String(format: "%.2f percent", point.percent))
             }
@@ -255,13 +251,6 @@ struct ChartCanvas: View {
         guard let selectedDate else { return false }
         let cal = Calendar(identifier: .gregorian)
         return cal.isDate(point.date, inSameDayAs: selectedDate)
-    }
-
-    private func isHoverAnchor(_ point: PointEntry) -> Bool {
-        guard let selectedDate else { return false }
-        let cal = Calendar(identifier: .gregorian)
-        let onSelectedDate = pointData.first { cal.isDate($0.date, inSameDayAs: selectedDate) }
-        return onSelectedDate?.id == point.id
     }
 
     private func color(for letter: ClassLetter) -> Color {
