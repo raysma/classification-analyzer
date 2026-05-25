@@ -39,7 +39,7 @@ A web app that fetches a USPSA shooter's classification record by member number,
 - The proxy function (`api/classification.ts`) is the only server code in the repo. All other logic is client-side.
 - Tailwind for all styling.
 - Zustand for all client state.
-- `localStorage` is only for UI flags (selected division, theme).
+- `localStorage` is for UI flags (selected division, theme) and the user-curated recent-lookups list (`{ memberNumber, name, lastLookedUpAt }`). It is not a classification cache — tapping a recent always re-issues the fetch.
 - URL state lives in `URLSearchParams`, manipulated via a small custom hook over `history.replaceState`. No routing library.
 - TypeScript strict; `unknown` and narrow, never `any`.
 - One file per type/component; no barrel `index.ts` re-exports.

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Division } from '../types/index'
+import type { Division, RecentLookup } from '../types/index'
 import type { ValidatedShooterRecord, ValidatedClassifier } from '../lib/validation'
 
 export interface HypotheticalScore {
@@ -8,12 +8,15 @@ export interface HypotheticalScore {
   percent: number
 }
 
+export const RECENT_LOOKUPS_CAP = 25
+
 interface AppState {
   memberNumber: string
   selectedDivision: Division | null
   lastLookupAt: string | null
   pastedRecord: ValidatedShooterRecord | null
   warnings: string[]
+  recentLookups: RecentLookup[]
 
   // Scenario (what-if) state — reset on division change
   hypotheticalScores: HypotheticalScore[]
@@ -25,6 +28,9 @@ interface AppState {
   setWarnings: (w: string[]) => void
   dismissWarnings: () => void
   reset: () => void
+
+  addRecentLookup: (memberNumber: string, name: string) => void
+  removeRecentLookup: (memberNumber: string) => void
 
   // Scenario actions
   addHypothetical: (score: HypotheticalScore) => void
@@ -41,6 +47,7 @@ export const useAppStore = create<AppState>()(
       lastLookupAt: null,
       pastedRecord: null,
       warnings: [],
+      recentLookups: [],
       hypotheticalScores: [],
 
       setMemberNumber: (memberNumber) => set({ memberNumber }),
@@ -62,6 +69,31 @@ export const useAppStore = create<AppState>()(
           warnings: [],
           hypotheticalScores: [],
         }),
+
+      addRecentLookup: (memberNumber, name) => {
+        const canonical = memberNumber.trim().toUpperCase()
+        if (!canonical) return
+        set((state) => {
+          const filtered = state.recentLookups.filter(
+            (r) => r.memberNumber !== canonical,
+          )
+          const entry: RecentLookup = {
+            memberNumber: canonical,
+            name,
+            lastLookedUpAt: new Date().toISOString(),
+          }
+          return { recentLookups: [entry, ...filtered].slice(0, RECENT_LOOKUPS_CAP) }
+        })
+      },
+
+      removeRecentLookup: (memberNumber) => {
+        const canonical = memberNumber.trim().toUpperCase()
+        set((state) => ({
+          recentLookups: state.recentLookups.filter(
+            (r) => r.memberNumber !== canonical,
+          ),
+        }))
+      },
 
       addHypothetical: (score) =>
         set((state) => ({
@@ -95,12 +127,16 @@ export const useAppStore = create<AppState>()(
       version: 2,
       partialize: (state) => ({
         selectedDivision: state.selectedDivision,
+        recentLookups: state.recentLookups,
       }),
       merge: (persistedState, currentState) => {
         const persisted = (persistedState ?? {}) as Partial<AppState>
         return {
           ...currentState,
           selectedDivision: persisted.selectedDivision ?? currentState.selectedDivision,
+          recentLookups: Array.isArray(persisted.recentLookups)
+            ? persisted.recentLookups
+            : currentState.recentLookups,
         }
       },
     },
