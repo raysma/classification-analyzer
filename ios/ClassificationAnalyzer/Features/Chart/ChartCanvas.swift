@@ -81,6 +81,17 @@ struct ChartCanvas: View {
                     .accessibilityValue("\(Int(band.threshold)) percent")
             }
 
+            // Vertical scrub guide — visible only while a date is selected.
+            // Apple Health / Stocks pattern: long-press-and-drag activates
+            // chartXSelection, this rule visually tracks the finger position
+            // so the scrub reads as continuous interaction rather than a
+            // single tap-select.
+            if let selectedDate {
+                RuleMark(x: .value("Selected", selectedDate))
+                    .foregroundStyle(.secondary.opacity(0.45))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+            }
+
             ForEach(pointData) { point in
                 PointMark(
                     x: .value("Date", point.date),
