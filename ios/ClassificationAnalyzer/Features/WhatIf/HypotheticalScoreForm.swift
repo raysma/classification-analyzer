@@ -31,7 +31,7 @@ struct HypotheticalScoreForm: View {
             }
 
             HStack {
-                TextField("e.g. 69.69", text: $input)
+                TextField("e.g. 69.6969", text: $input)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 120)
