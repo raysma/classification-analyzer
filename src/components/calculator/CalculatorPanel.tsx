@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import type { Division } from '../../types/index'
 import { DivisionSchema } from '../../lib/validation'
 import { formatDivision } from '../../lib/formatters'
 import { listActiveClassifiers } from '../../lib/hhf'
-import { classifyHF } from '../../lib/calculator'
+import { classifyHF, type ClassificationResult } from '../../lib/calculator'
 import { useAppStore } from '../../store/useAppStore'
 import LetterPill from './LetterPill'
 import type { Tab } from '../../lib/urlState'
@@ -26,28 +26,58 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
   const [division, setDivision] = useState<Division>(selectedDivision ?? 'CarryOptics')
   const [code, setCode] = useState<string>(classifiers[0]?.code ?? '')
   const [hfInput, setHfInput] = useState<string>('')
+  const [result, setResult] = useState<ClassificationResult | null>(null)
+  const [resultDivision, setResultDivision] = useState<Division | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const hfValue = (() => {
+  function clearResult() {
+    if (result !== null) setResult(null)
+    if (resultDivision !== null) setResultDivision(null)
+    if (error !== null) setError(null)
+  }
+
+  function handleCalculate(e?: FormEvent<HTMLFormElement>) {
+    e?.preventDefault()
     const trimmed = hfInput.trim()
-    if (!trimmed) return null
+    if (!trimmed) {
+      setResult(null)
+      setResultDivision(null)
+      setError('Enter a hit factor.')
+      return
+    }
     const n = Number(trimmed)
-    return Number.isFinite(n) ? n : null
-  })()
+    if (!Number.isFinite(n) || n <= 0) {
+      setResult(null)
+      setResultDivision(null)
+      setError('Hit factor must be a positive number.')
+      return
+    }
+    const r = classifyHF(n, code, division)
+    if (!r) {
+      setResult(null)
+      setResultDivision(null)
+      setError(`No HHF on file for ${code} in ${formatDivision(division)}.`)
+      return
+    }
+    setError(null)
+    setResult(r)
+    setResultDivision(division)
+  }
 
-  const result = classifyHF(hfValue, code, division)
   const scenarioFull = hypoCount >= 8
-  const willResetScenario = hasRecord && hypoCount > 0 && division !== selectedDivision
+  const willResetScenario =
+    hasRecord && hypoCount > 0 && resultDivision !== null && resultDivision !== selectedDivision
 
   const sendDisabledReason = (() => {
-    if (!result) return 'Enter a hit factor to compute a percentage first.'
+    if (!result || !resultDivision) return 'Calculate a percentage first.'
     if (!hasRecord) return 'Look up a shooter first to send hypotheticals to What-If.'
     if (scenarioFull) return 'What-If already has the maximum of 8 hypothetical scores.'
     return null
   })()
 
   function handleSend() {
-    if (!result || !hasRecord || scenarioFull) return
-    setSelectedDivision(division)
+    if (!result || !resultDivision || !hasRecord || scenarioFull) return
+    setSelectedDivision(resultDivision)
     addHypothetical({
       id: `${Date.now()}-${Math.random()}`,
       percent: result.pct,
@@ -56,7 +86,10 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <form
+      onSubmit={handleCalculate}
+      className="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+    >
       <div className="space-y-1">
         <h2 className="text-base font-semibold">Classifier calculator</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -72,7 +105,10 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </span>
           <select
             value={division}
-            onChange={(e) => setDivision(e.target.value as Division)}
+            onChange={(e) => {
+              setDivision(e.target.value as Division)
+              clearResult()
+            }}
             aria-label="Division"
             className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           >
@@ -90,7 +126,10 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </span>
           <select
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => {
+              setCode(e.target.value)
+              clearResult()
+            }}
             aria-label="Classifier"
             className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           >
@@ -112,7 +151,10 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             step="0.0001"
             min="0"
             value={hfInput}
-            onChange={(e) => setHfInput(e.target.value)}
+            onChange={(e) => {
+              setHfInput(e.target.value)
+              clearResult()
+            }}
             placeholder="e.g. 9.0749"
             aria-label="Hit factor"
             className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
@@ -120,46 +162,52 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
         </label>
       </div>
 
-      {result ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="submit"
+          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-300"
+        >
+          Calculate
+        </button>
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={sendDisabledReason !== null}
+          title={sendDisabledReason ?? undefined}
+          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Send to What-If
+        </button>
+        {sendDisabledReason && !error && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {sendDisabledReason}
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+
+      {result && resultDivision && (
         <div className="flex flex-wrap items-center gap-3 rounded-md bg-gray-50 dark:bg-gray-800 px-4 py-3">
           <LetterPill letter={result.letter} />
           <p className="text-xl font-bold tabular-nums">
             {result.pct.toFixed(4)}%
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            HHF {result.hhf.toFixed(4)} · {formatDivision(division)}
+            HHF {result.hhf.toFixed(4)} · {formatDivision(resultDivision)}
           </p>
         </div>
-      ) : hfInput.trim() ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Enter a positive hit factor for an active classifier to see a result.
-        </p>
-      ) : null}
+      )}
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={sendDisabledReason !== null}
-            title={sendDisabledReason ?? undefined}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Send to What-If
-          </button>
-          {sendDisabledReason && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {sendDisabledReason}
-            </p>
-          )}
-        </div>
-        {willResetScenario && (
-          <p className="text-xs text-amber-700 dark:text-amber-400">
-            Sending will switch the selected division to {formatDivision(division)},
-            which clears the existing What-If scenario.
-          </p>
-        )}
-      </div>
-    </div>
+      {willResetScenario && resultDivision && (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          Sending will switch the selected division to{' '}
+          {formatDivision(resultDivision)}, which clears the existing What-If
+          scenario.
+        </p>
+      )}
+    </form>
   )
 }
