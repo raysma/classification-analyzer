@@ -2,7 +2,25 @@
 
 Native iOS port. Targets iOS 18.0+; Liquid Glass on iOS 26.
 
-See `../IOS_PLAN.md` for the full plan and milestone breakdown.
+**Status**: shipping 1.0.0. All planned milestones (M1–M5) complete and in TestFlight. See `../IOS_PLAN.md` for the full plan and milestone breakdown.
+
+## What's in 1.0.0
+
+- **Lookup tab**: member-number input with `xmark.circle.fill` clear button, recent-lookups list (last 10, persisted to `UserDefaults`), manual-paste sheet for offline / blocked records.
+- **Overview tab**: SummaryCard with class letter pill + 4-decimal percent + all-time high + cross-division floor; Journey-to insights (1–5 classifier projection) above the score history chart; ProgressChartView with class threshold bands, scrub-line tooltip, and a fullscreen landscape variant.
+- **What-If tab**: up to 8 hypothetical scores, live projected percent with `.contentTransition(.numericText())`, per-row Y/F badge, indigo row text for hypotheticals.
+- **Scores tab**: full classifier history table, sortable, with flag tooltips.
+- **Calculator tab**: hit factor → percent + class letter for any classifier code/division. *Send to What-If* drops the result into the scenario carrying the real classifier code and today's date so MRO behaves like a genuine reshoot.
+- **Deep linking**: custom scheme `classificationanalyzer://lookup?m=<member>&div=<division>`.
+- **App icon**: blue/white concentric target on solid blue, matches the web favicon.
+
+## Architecture quick-ref
+
+- `App/AppModel.swift` — `@Observable @MainActor` single source of truth (mirrors `useAppStore` on web).
+- `Packages/USPSARules` — port of `src/lib/rules.ts`, `projection.ts`, `formatters.ts`, plus the iOS-only `Calculator.swift` and `HHFTable.swift`. Bundles three JSON resources (HHFs, classifier names, divisions).
+- `Packages/USPSADomain` — types only (`Division`, `ClassLetter`, `Flag`, `Classifier`, `ShooterRecord`).
+- `Packages/USPSAPasteParser` — port of `src/lib/textParser.ts`.
+- `Packages/USPSAClient` — `URLSession` actor calling the existing Vercel proxy.
 
 ## First-time setup
 

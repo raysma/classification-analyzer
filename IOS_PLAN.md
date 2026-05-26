@@ -1,5 +1,20 @@
 # iOS Native Port Plan — classification-analyzer
 
+## Status: 1.0.0 — shipped to TestFlight ✅
+
+All M1–M5 milestones complete. The app is live on TestFlight at `CFBundleShortVersionString: 1.0.0`.
+
+| Milestone | Status | Notes |
+|---|---|---|
+| M1 — Hello, lookup | ✅ | Scaffold, 4 SPM packages, Lookup view, plain table, stub Summary. |
+| M2 — Rules + insights | ✅ | Full Rules + Projection ports, real SummaryCard, ClassUpInsightsView with K=1..5 grid + Journey-to picker, DivisionPicker, custom-scheme deep linking. |
+| M3 — Chart + manual paste | ✅ | ProgressChartView (Swift Charts) with dots + spline + reference lines + scrub-line tooltip + fullscreen landscape variant. USPSAPasteParser port + ManualPasteSheet. |
+| M4 — What-If + Liquid Glass | ✅ | WhatIfPanel with 8-cap hypotheticals + per-row Y/F badge. Conditional `glassEffect` wrapped behind `if #available(iOS 26)` with Material fallback on iOS 18. Universal links deferred to a future minor — custom scheme handles all v1 deep linking. |
+| M5 — Polish + automation | ✅ | App icon (blue/white concentric target on blue), launch screen, Dark Mode, accessibility, error copy, manual TestFlight builds. ASC API key + automated release workflow deferred — not blocking 1.0.0. |
+| **Beyond M5** | ✅ | Classifier Calculator tab + Send-to-What-If hand-off, recent lookups list, clearable member-number field, tap-out keyboard dismiss on every tab, USPSA-spec wording polish across all surfaces. |
+
+Two handoff briefs appended below (Recent lookups, Classifier calculator) were implemented as part of M5 / Beyond-M5.
+
 ## Context
 
 Today's app is a React/TS/Tailwind/Zustand web app on Vercel that looks up a USPSA shooter's classification record, visualizes their history, and projects what they need to class up. The user has an Apple Developer account and wants the same experience as a native iOS app on **TestFlight**, designed for **iOS 26 Liquid Glass** while still running on iOS 18.
