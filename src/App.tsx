@@ -286,7 +286,7 @@ function AppInner() {
       <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-2xl" aria-hidden="true">🎯</span>
+            <img src="/favicon.svg" alt="" width="24" height="24" className="select-none" />
             <h1 className="text-xl font-bold">Classification Analyzer</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
