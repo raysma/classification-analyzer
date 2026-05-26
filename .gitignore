@@ -29,3 +29,16 @@ dist-ssr
 # Playwright
 playwright-report
 test-results
+
+# iOS
+ios/*.xcodeproj
+ios/*.xcworkspace
+ios/.build
+ios/.swiftpm
+ios/Packages/*/.build
+ios/Packages/*/.swiftpm
+ios/DerivedData
+ios/ClassificationAnalyzer/Info.plist
+ios/Configs/Local.xcconfig
+xcuserdata/
+*.xcuserstate

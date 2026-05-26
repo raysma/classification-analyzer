@@ -1,0 +1,106 @@
+name: ClassificationAnalyzer
+
+options:
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: en
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # DEVELOPMENT_TEAM is set in Configs/Local.xcconfig (gitignored).
+    # See ios/README.md for one-time setup.
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT: NO
+  configs:
+    Debug:
+      baseConfiguration: Configs/Debug.xcconfig
+    Release:
+      baseConfiguration: Configs/Release.xcconfig
+
+packages:
+  USPSADomain:
+    path: Packages/USPSADomain
+  USPSARules:
+    path: Packages/USPSARules
+  USPSAPasteParser:
+    path: Packages/USPSAPasteParser
+  USPSAClient:
+    path: Packages/USPSAClient
+
+fileGroups:
+  - project.yml
+  - ../IOS_PLAN.md
+  - README.md
+
+targets:
+  ClassificationAnalyzer:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: ClassificationAnalyzer
+    dependencies:
+      - package: USPSADomain
+        product: USPSADomain
+      - package: USPSAClient
+        product: USPSAClient
+      - package: USPSARules
+        product: USPSARules
+      - package: USPSAPasteParser
+        product: USPSAPasteParser
+    info:
+      path: ClassificationAnalyzer/Info.plist
+      properties:
+        CFBundleDisplayName: Classification
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.rmshooting.classificationanalyzer
+            CFBundleURLSchemes:
+              - classificationanalyzer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rmshooting.classificationanalyzer
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  ClassificationAnalyzerTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: ClassificationAnalyzerTests
+    dependencies:
+      - target: ClassificationAnalyzer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rmshooting.classificationanalyzer.tests
+        GENERATE_INFOPLIST_FILE: YES

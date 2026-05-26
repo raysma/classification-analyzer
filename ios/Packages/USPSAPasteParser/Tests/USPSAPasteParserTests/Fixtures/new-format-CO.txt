@@ -1,0 +1,11 @@
+Date	Number	Club	F	Percent	HF	Entered	Source
+3/15/26	25-02	Test Club Alpha	Y	76.7015	8.4871	3/15/26	Stage Score
+2/05/26	03-03	Test Club Beta	Y	76.1011	6.2740	2/23/26	Stage Score
+1/22/26	23-02	Test Club Gamma	Y	78.7866	8.4672	1/22/26	Stage Score
+1/22/26	24-08	Test Club Gamma	Y	75.9866	8.1235	1/22/26	Stage Score
+1/22/26	20-03	Test Club Gamma	F	69.4297	7.1053	1/22/26	Stage Score
+1/22/26	06-10	Test Club Gamma	F	57.1350	5.4845	1/22/26	Stage Score
+11/05/25		Sample 2025 Area Championship at WA01	E	67.4866	-	11/12/25	Major Match
+10/25/25	24-08	Test Club Gamma	E	79.7039	8.5209	10/28/25	Stage Score
+9/11/25	08-02	Test Club Alpha	E	80.3135	5.1905	9/11/25	Stage Score
+8/03/25	99-10	Test Club Delta	E	82.0772	7.8062	8/03/25	Stage Score

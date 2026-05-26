@@ -1,0 +1,165 @@
+import SwiftUI
+import UIKit
+import USPSAClient
+import USPSADomain
+
+struct LookupTab: View {
+    @Environment(AppModel.self) private var appModel
+    @Binding var selectedTab: Int
+
+    @State private var showingPasteSheet: Bool = false
+    @State private var pasteRecordSnapshot: ShooterRecord?
+    @FocusState private var memberFieldFocused: Bool
+
+    var body: some View {
+        @Bindable var model = appModel
+
+        NavigationStack {
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        lookupCard(memberNumber: $model.memberNumber)
+                        RecentsList(selectedTab: $selectedTab)
+                        pasteCard
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
+                    .contentShape(Rectangle())
+                    .onTapGesture { dismissKeyboard() }
+                }
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .navigationTitle("Lookup")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showingPasteSheet, onDismiss: handlePasteSheetDismiss) {
+                ManualPasteSheet()
+                    .environment(appModel)
+            }
+        }
+    }
+
+    private func lookupCard(memberNumber: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("USPSA member number")
+                .font(.headline)
+
+            HStack {
+                TextField("e.g. A69420", text: memberNumber)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+                    .submitLabel(.search)
+                    .focused($memberFieldFocused)
+                    .onSubmit { triggerLookup() }
+                    // Trailing X-circle clear button — mirrors UITextField's
+                    // .clearButtonMode = .whileEditing and the UISearchBar
+                    // convention. Visible only when the field has content,
+                    // so a fresh field doesn't show a dead affordance.
+                    .overlay(alignment: .trailing) {
+                        if !memberNumber.wrappedValue.isEmpty {
+                            Button {
+                                memberNumber.wrappedValue = ""
+                                memberFieldFocused = true
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 6)
+                            .accessibilityLabel("Clear member number")
+                        }
+                    }
+
+                Button {
+                    triggerLookup()
+                } label: {
+                    ZStack {
+                        // Hidden "Look up" reserves consistent button width
+                        // across the loading / idle states so the TextField
+                        // next to it doesn't grow and shrink.
+                        Text("Look up").opacity(0)
+                        if appModel.isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(.white)
+                        } else {
+                            Text("Look up")
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            if let error = appModel.lastError {
+                Text(error.localizedDescription)
+                    .font(.callout)
+                    .foregroundStyle(.red)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .refinedSurface()
+    }
+
+    private var pasteCard: some View {
+        Button {
+            pasteRecordSnapshot = appModel.pastedRecord
+            showingPasteSheet = true
+            memberFieldFocused = false
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "doc.on.clipboard")
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Paste classifier data manually")
+                        .font(.subheadline.weight(.medium))
+                    Text("Use when the API is blocked or for a record you've copied.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .refinedSurface()
+    }
+
+    private func dismissKeyboard() {
+        memberFieldFocused = false
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+    }
+
+    private func triggerLookup() {
+        // Guards in code instead of .disabled() on the button — the iOS 26
+        // borderedProminent disabled state renders near-black in dark mode,
+        // making the button unreadable both with no input and during loading.
+        // Keep the button visually enabled and refuse-to-act here.
+        guard !appModel.isLoading else { return }
+        let cleaned = appModel.memberNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else {
+            memberFieldFocused = true
+            return
+        }
+        memberFieldFocused = false
+        Task {
+            await appModel.lookup()
+            if appModel.lastError == nil && appModel.effectiveRecord != nil {
+                selectedTab = 1
+            }
+        }
+    }
+
+    private func handlePasteSheetDismiss() {
+        if appModel.pastedRecord != pasteRecordSnapshot {
+            selectedTab = 1
+        }
+    }
+}

@@ -1,0 +1,14 @@
+Date	Classifier	Classifier Name	Hit Factor	%	Flag	Club
+11/10/2023	Major Match	State Championship 2023		85.50	Y	State Championship 2023
+9/15/2023	99-11	Smoke and Hope	12.3450	90.12	S	Palmetto Gun Club
+9/15/2023	99-11	Smoke and Hope	11.8900	87.45	S	Palmetto Gun Club
+7/22/2023	18-10	El Presidente Classico	11.4320	88.91	M	Low Country Shooters
+5/5/2023	18-10	El Presidente Classico	10.9870	85.44	M	Foothills Practical Shooters
+3/11/2023	03-06	The Annoying Thing	10.5210	87.33	Y	Palmetto Gun Club
+1/8/2023	09-02	Speed Option	10.1120	86.78	Y	Low Country Shooters
+11/5/2022	13-02	Accelerator	9.8830	84.21	Y	Foothills Practical Shooters
+9/17/2022	07-01	Standards II	9.5110	81.55	F	Palmetto Gun Club
+8/6/2022	18-03	Pendulum	9.1020	78.34	E	Low Country Shooters
+6/18/2022	09-04	The Far Away	8.8460	75.18	E	Foothills Practical Shooters
+4/2/2022	03-14	Where'd They Go	8.4320	72.90	E	Palmetto Gun Club
+2/12/2022	13-01	Vickers	8.1110	70.44	E	Low Country Shooters

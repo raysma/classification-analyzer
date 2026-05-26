@@ -1,0 +1,58 @@
+name: iOS
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode and Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Test USPSADomain
+        run: swift test --package-path Packages/USPSADomain
+
+      - name: Test USPSARules
+        run: swift test --package-path Packages/USPSARules
+
+      - name: Test USPSAPasteParser
+        run: swift test --package-path Packages/USPSAPasteParser
+
+      - name: Test USPSAClient
+        run: swift test --package-path Packages/USPSAClient
+
+      - name: Build app
+        run: |
+          xcodebuild build \
+            -project ClassificationAnalyzer.xcodeproj \
+            -scheme ClassificationAnalyzer \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
