@@ -92,7 +92,7 @@ struct ClassUpInsightsView: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .tint(.primary)
-                Text("class — \(isDown ? "maximum allowed" : "required") average")
+                Text("class — \(isDown ? "max allowed" : "required") average")
             }
             .font(.subheadline.weight(.medium))
 
