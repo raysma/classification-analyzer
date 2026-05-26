@@ -9,11 +9,20 @@ struct RefinedSurface<S: Shape>: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
+        // `.glassEffect` is an iOS 26 SDK symbol (Xcode 17+, Swift 6.2+).
+        // `if #available` is only a runtime check — the compiler still has
+        // to resolve the symbol, and on Xcode 16.x SDKs (which CI uses) it
+        // doesn't exist. Gate the entire branch with #if compiler so the
+        // call is invisible to older compilers and we fall back to Material.
+        #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             content.glassEffect(in: shape)
         } else {
             content.background(.thinMaterial, in: shape)
         }
+        #else
+        content.background(.thinMaterial, in: shape)
+        #endif
     }
 }
 
