@@ -98,8 +98,8 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <label className="block space-y-1 sm:flex-1 sm:basis-0 min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label className="block space-y-1 min-w-0">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Division
           </span>
@@ -110,7 +110,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
               clearResult()
             }}
             aria-label="Division"
-            className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="block w-full min-w-0 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           >
             {DIVISIONS.map((d) => (
               <option key={d} value={d}>
@@ -120,7 +120,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </select>
         </label>
 
-        <label className="block space-y-1 sm:flex-1 sm:basis-0 min-w-0">
+        <label className="block space-y-1 min-w-0">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Classifier
           </span>
@@ -131,7 +131,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
               clearResult()
             }}
             aria-label="Classifier"
-            className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="block w-full min-w-0 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           >
             {classifiers.map((c) => (
               <option key={c.code} value={c.code}>
@@ -141,7 +141,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </select>
         </label>
 
-        <label className="block space-y-1 sm:flex-1 sm:basis-0 min-w-0">
+        <label className="block space-y-1 min-w-0">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Hit factor
           </span>
@@ -157,7 +157,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             }}
             placeholder="e.g. 9.0749"
             aria-label="Hit factor"
-            className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="block w-full min-w-0 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           />
         </label>
       </div>
@@ -165,7 +165,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="submit"
-          className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-300"
+          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Calculate
         </button>
@@ -174,7 +174,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           onClick={handleSend}
           disabled={sendDisabledReason !== null}
           title={sendDisabledReason ?? undefined}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Send to What-If
         </button>
