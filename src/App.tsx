@@ -403,10 +403,6 @@ function AppInner() {
             />
           )}
 
-          {record && tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
-            <ProgressChart classifiers={activeClassifiers} history={history} />
-          )}
-
           {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
             <ClassUpInsights
               classifiers={activeClassifiers}
@@ -415,6 +411,10 @@ function AppInner() {
                 ? { officialClass: record.currentClasses[selectedDivision] }
                 : {})}
             />
+          )}
+
+          {record && tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
+            <ProgressChart classifiers={activeClassifiers} history={history} />
           )}
 
           {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
