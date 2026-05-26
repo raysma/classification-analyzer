@@ -183,7 +183,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="submit"
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Calculate
         </button>
@@ -192,7 +192,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           onClick={handleSend}
           disabled={sendDisabledReason !== null}
           title={sendDisabledReason ?? undefined}
-          className="rounded-md bg-indigo-100 dark:bg-indigo-950 px-3 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-200 hover:bg-indigo-200 dark:hover:bg-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Send to What-If
         </button>

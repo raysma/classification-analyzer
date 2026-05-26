@@ -93,8 +93,8 @@ function RecordBarHeader({
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'whatif', label: 'What-If' },
-  { id: 'calculator', label: 'Calculator' },
   { id: 'scores', label: 'Scores' },
+  { id: 'calculator', label: 'Calculator' },
 ]
 
 function TabNav({ currentTab, onChange }: { currentTab: Tab; onChange: (t: Tab) => void }) {
