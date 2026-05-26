@@ -63,7 +63,7 @@ targets:
       properties:
         CFBundleDisplayName: Classification
         CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "26"
+        CFBundleVersion: "27"
         LSRequiresIPhoneOS: true
         UILaunchScreen:
           UIColorName: LaunchBackground
