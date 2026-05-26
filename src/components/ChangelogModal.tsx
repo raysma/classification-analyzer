@@ -109,9 +109,9 @@ export default function ChangelogModal({ onClose }: Props) {
         <div className="px-5 py-4 space-y-8">
           {entries.map((entry) => (
             <div key={entry.date}>
-              <p className="text-base font-semibold text-gray-500 dark:text-gray-400 mb-4">
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 {entry.date}
-              </p>
+              </h3>
               {entry.sections.map((section) => (
                 <div key={section.heading} className="mb-5 last:mb-0">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
