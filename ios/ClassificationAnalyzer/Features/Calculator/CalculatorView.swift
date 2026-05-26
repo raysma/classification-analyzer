@@ -79,7 +79,7 @@ struct CalculatorView: View {
             }
 
             labelled("Hit factor") {
-                TextField("e.g. 9.0749", text: $hfText)
+                TextField("e.g. 6.9420", text: $hfText)
                     .keyboardType(.decimalPad)
                     .submitLabel(.go)
                     .textFieldStyle(.roundedBorder)
