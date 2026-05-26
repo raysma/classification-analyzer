@@ -17,6 +17,7 @@ import ProgressChart from './components/ProgressChart'
 import ManualPastePanel from './components/ManualPastePanel'
 import ClassUpInsights from './components/ClassUpInsights'
 import WhatIfPanel from './components/whatif/WhatIfPanel'
+import CalculatorPanel from './components/calculator/CalculatorPanel'
 import ThemeToggle from './components/ThemeToggle'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChangelogModal from './components/ChangelogModal'
@@ -92,6 +93,7 @@ function RecordBarHeader({
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'overview', label: 'Overview' },
   { id: 'whatif', label: 'What-If' },
+  { id: 'calculator', label: 'Calculator' },
   { id: 'scores', label: 'Scores' },
 ]
 
@@ -366,86 +368,90 @@ function AppInner() {
 
         <ErrorBanner error={error} />
 
-        {record && (
-          <div className="space-y-4">
+        <div className="space-y-4">
+          {record && (
             <DivisionTabs
               divisions={divisionKeys}
               scoreCounts={scoreCounts}
               selected={selectedDivision}
               onSelect={(d) => setSelectedDivision(d)}
             />
+          )}
 
-            <TabNav currentTab={tab} onChange={setTab} />
+          <TabNav currentTab={tab} onChange={setTab} />
 
-            {tab === 'overview' && selectedDivision && activeClassifiers.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No classifiers found for {formatDivision(selectedDivision)}.
-              </p>
-            )}
+          {tab === 'calculator' && (
+            <CalculatorPanel hasRecord={!!record} onNavigate={setTab} />
+          )}
 
-            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
-              <SummaryCard
-                projectedPercent={currentPercent}
-                windowSize={windowScores.length}
-                division={selectedDivision}
-                crossDivisionFloor={crossDivisionFloorClass(record.classifiers, selectedDivision)}
-                {...(allTimeHighPercent !== undefined ? { allTimeHighPercent } : {})}
-                {...(record.currentClasses[selectedDivision]
-                  ? { officialClass: record.currentClasses[selectedDivision] }
-                  : {})}
-              />
-            )}
+          {record && tab === 'overview' && selectedDivision && activeClassifiers.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No classifiers found for {formatDivision(selectedDivision)}.
+            </p>
+          )}
 
-            {tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
-              <ProgressChart classifiers={activeClassifiers} history={history} />
-            )}
+          {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
+            <SummaryCard
+              projectedPercent={currentPercent}
+              windowSize={windowScores.length}
+              division={selectedDivision}
+              crossDivisionFloor={crossDivisionFloorClass(record.classifiers, selectedDivision)}
+              {...(allTimeHighPercent !== undefined ? { allTimeHighPercent } : {})}
+              {...(record.currentClasses[selectedDivision]
+                ? { officialClass: record.currentClasses[selectedDivision] }
+                : {})}
+            />
+          )}
 
-            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
-              <ClassUpInsights
-                classifiers={activeClassifiers}
-                division={selectedDivision}
-                {...(record.currentClasses[selectedDivision]
-                  ? { officialClass: record.currentClasses[selectedDivision] }
-                  : {})}
-              />
-            )}
+          {record && tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
+            <ProgressChart classifiers={activeClassifiers} history={history} />
+          )}
 
-            {tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
-              <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
-                Only {activeClassifiers.length} of 4 classifiers in {formatDivision(selectedDivision)} — needs{' '}
-                {4 - activeClassifiers.length} more for an initial classification.
-              </p>
-            )}
+          {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
+            <ClassUpInsights
+              classifiers={activeClassifiers}
+              division={selectedDivision}
+              {...(record.currentClasses[selectedDivision]
+                ? { officialClass: record.currentClasses[selectedDivision] }
+                : {})}
+            />
+          )}
 
-            {tab === 'whatif' && selectedDivision && windowScores.length > 0 && (
-              <WhatIfPanel
-                windowScores={windowScores}
-                currentPercent={currentPercent}
-              />
-            )}
+          {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
+            <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
+              Only {activeClassifiers.length} of 4 classifiers in {formatDivision(selectedDivision)} — needs{' '}
+              {4 - activeClassifiers.length} more for an initial classification.
+            </p>
+          )}
 
-            {tab === 'whatif' && selectedDivision && windowScores.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No scores in window for {formatDivision(selectedDivision)} — nothing to simulate.
-              </p>
-            )}
+          {record && tab === 'whatif' && selectedDivision && windowScores.length > 0 && (
+            <WhatIfPanel
+              windowScores={windowScores}
+              currentPercent={currentPercent}
+            />
+          )}
 
-            {tab === 'scores' && selectedDivision && activeClassifiers.length > 0 && (
-              <ClassifierTable
-                classifiers={activeClassifiers}
-                highlightedIds={includedIds}
-                droppedIds={droppedIds}
-                excludedIds={excludedIds}
-              />
-            )}
+          {record && tab === 'whatif' && selectedDivision && windowScores.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No scores in window for {formatDivision(selectedDivision)} — nothing to simulate.
+            </p>
+          )}
 
-            {tab === 'scores' && selectedDivision && activeClassifiers.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No classifiers found for {formatDivision(selectedDivision)}.
-              </p>
-            )}
-          </div>
-        )}
+          {record && tab === 'scores' && selectedDivision && activeClassifiers.length > 0 && (
+            <ClassifierTable
+              classifiers={activeClassifiers}
+              highlightedIds={includedIds}
+              droppedIds={droppedIds}
+              excludedIds={excludedIds}
+            />
+          )}
+
+          {record && tab === 'scores' && selectedDivision && activeClassifiers.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No classifiers found for {formatDivision(selectedDivision)}.
+            </p>
+          )}
+        </div>
 
         <footer className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-6 text-center text-xs text-gray-400 dark:text-gray-500 space-y-2">
           <p>Crafted with love for the shooting community.</p>

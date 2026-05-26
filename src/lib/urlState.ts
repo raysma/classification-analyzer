@@ -4,8 +4,8 @@ import { DivisionSchema } from './validation'
 
 const DIVISIONS = DivisionSchema.options
 
-export type Tab = 'overview' | 'whatif' | 'scores'
-const TABS: readonly Tab[] = ['overview', 'whatif', 'scores'] as const
+export type Tab = 'overview' | 'whatif' | 'calculator' | 'scores'
+const TABS: readonly Tab[] = ['overview', 'whatif', 'calculator', 'scores'] as const
 
 export interface UrlState {
   memberNumber: string | null
