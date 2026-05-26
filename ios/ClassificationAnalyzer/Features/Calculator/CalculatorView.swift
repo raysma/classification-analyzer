@@ -121,7 +121,7 @@ struct CalculatorView: View {
 
                 Button("Send to What-If", action: sendToWhatIf)
                     .buttonStyle(.bordered)
-                    .tint(.purple)
+                    .tint(.indigo)
                     .disabled(sendDisabledReason != nil)
             }
             if let reason = sendDisabledReason {
