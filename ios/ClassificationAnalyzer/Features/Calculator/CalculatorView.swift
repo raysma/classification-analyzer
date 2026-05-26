@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import USPSADomain
 import USPSARules
 
@@ -26,19 +27,30 @@ struct CalculatorView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    header
-                    inputs
-                    actions
-                    if let result, let resultDivision {
-                        resultChip(result: result, division: resultDivision)
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+                        inputs
+                        actions
+                        if let result, let resultDivision {
+                            resultChip(result: result, division: resultDivision)
+                        }
+                        if willSwitchDivision, let resultDivision {
+                            warningBanner(switchingTo: resultDivision)
+                        }
                     }
-                    if willSwitchDivision, let resultDivision {
-                        warningBanner(switchingTo: resultDivision)
+                    .padding()
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
                     }
                 }
-                .padding()
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle("Calculator")
             .navigationBarTitleDisplayMode(.inline)
