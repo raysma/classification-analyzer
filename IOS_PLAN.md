@@ -224,3 +224,188 @@ Web equivalents on `main` for cross-reference:
 - Wiring: `src/App.tsx` — `useEffect` watching `data?.record` with `source === 'fetch'` guard
 - Tests: `src/store/useAppStore.test.ts`
 
+---
+
+# Classifier calculator (handoff brief)
+
+## Context
+
+The web app shipped a new *Calculator* tab on `main` that turns a freshly-shot classifier hit factor into the USPSA percentage and class letter, and optionally pipes the result into the What-If scenario as a hypothetical row carrying the **real** classifier code and today's date — so MRO fires the way it would in real life when a shooter reshoots a classifier. iOS gets the same feature. All math is pure; no network involved.
+
+## Rules (mirrored from the web implementation)
+
+- **Tab order**: Overview · What-If · Scores · Calculator (Calculator is last).
+- Calculator works **without a loaded record**. *Send to What-If* is the only action that requires one.
+- Result is computed only when the user taps **Calculate** — not live as they type. Any edit to division / classifier / hit factor clears the prior result so stale numbers aren't shown.
+- Math:
+  ```
+  pct    = min(110, hitFactor / hhf * 100)
+  letter = bracket(pct)   // reuse classFor from Rules.swift — do not duplicate
+  ```
+  The 110% cap is real and load-bearing; USPSA caps individual classifier results at 110% for both per-stage rating and the rolling average.
+- Reject non-finite / ≤ 0 HF and "no HHF on file" with no result (no error banner — just nothing renders).
+- On *Send to What-If*: if the calculator's division differs from `selectedDivision`, switching divisions resets the existing scenario (existing What-If behavior). Warn the user inline before the tap. Then add a hypothetical carrying `(percent, today's local YYYY-MM-DD, real classifier code)` and navigate to the What-If tab.
+- The "active" classifier list is **whatever appears in the HHF table** — not every code in `uspsa-classifiers.json` is active. `classifiers.json` has 117 historical codes; only the 63 with a published HHF are in the dropdown. Sort ascending by code.
+
+## Data files to add
+
+Bundle three JSON files copied verbatim from `src/data/` in the web repo. Refresh by replacing the files in place; no schema munging needed.
+
+- `ios/Packages/USPSARules/Sources/USPSARules/Resources/uspsa-hhfs.json` (~12 KB)
+- `ios/Packages/USPSARules/Sources/USPSARules/Resources/uspsa-classifiers.json` (~62 KB)
+- `ios/Packages/USPSARules/Sources/USPSARules/Resources/uspsa-divisions.json` (~1 KB)
+
+Add `resources: [.process("Resources")]` to the `USPSARules` package target. Load once via `Bundle.module` at first use. Provenance + refresh instructions live at the top of `HHFTable.swift` (below).
+
+Division ↔ shortcode mapping (matches web `DIVISION_TO_SHORTCODE` in `src/lib/hhf.ts`):
+
+| Division | HHF shortcode |
+|---|---|
+| `.open` | `opn` |
+| `.limited` | `ltd` |
+| `.limited10` | `l10` |
+| `.production` | `prod` |
+| `.revolver` | `rev` |
+| `.singleStack` | `ss` |
+| `.carryOptics` | `co` |
+| `.limitedOptics` | `lo` |
+| `.pcc` | `pcc` |
+
+## Files to add / modify
+
+### 1. `USPSARules/HHFTable.swift` (new)
+
+```swift
+public struct ActiveClassifier: Sendable, Hashable, Identifiable {
+    public let code: String   // "22-07"
+    public let name: String   // "Cross Road Blues"
+    public var id: String { code }
+}
+
+public enum HHFTable {
+    public static func hhf(code: String, division: Division) -> Double?
+    public static func activeClassifiers() -> [ActiveClassifier]  // sorted by code asc
+}
+```
+
+Index built on first call: trim the code, key `[String: [Division: Double]]`. Never throws. Returns `nil` on any miss (unknown code, division with no HHF for that code, malformed input).
+
+### 2. `USPSARules/Calculator.swift` (new)
+
+```swift
+public struct ClassificationResult: Sendable, Equatable {
+    public let pct: Double         // capped at 110
+    public let letter: ClassLetter
+    public let hhf: Double
+}
+
+public enum Calculator {
+    public static let pctCap = 110.0
+    public static func classify(hitFactor: Double, code: String, division: Division) -> ClassificationResult?
+}
+```
+
+Reuse `classFor(percent:)` from the existing `Rules.swift` for the letter — do not duplicate the bracket table.
+
+### 3. `ios/ClassificationAnalyzer/App/HypotheticalScore.swift` (modify)
+
+Today's `HypotheticalScore` is `{ id, percent }`. Extend with two optionals so the model can distinguish calculator-sent rows from form-added ones:
+
+```swift
+public struct HypotheticalScore: Codable, Sendable, Identifiable, Hashable {
+    public let id: UUID
+    public let percent: Double
+    public var date: String?           // YYYY-MM-DD, only set when sent from Calculator
+    public var classifierCode: String? // real code, only set when sent from Calculator
+}
+```
+
+When building the scenario `[Classifier]` to feed into the rolling-window pipeline (the iOS equivalent of `buildScenarioScores` in `src/store/useAppStore.ts`), use the real `date`/`classifierCode` if present, otherwise fall back to the synthetic sentinel (`"9999-MM-01"` / `"hypo-<id>"`) the form already uses.
+
+### 4. `ios/ClassificationAnalyzer/App/AppModel.swift` (modify)
+
+- Extend `addHypothetical(...)` to accept optional `date` and `classifierCode`. Keep the 8-cap unchanged.
+- `removeHypothetical(id:)` is unchanged.
+- Add `.calculator` to the tab enum, at the END of the order. Update `DeepLinkRouter` so `?tab=calculator` resolves.
+
+### 5. `ios/ClassificationAnalyzer/Features/Calculator/CalculatorView.swift` (new)
+
+Header: title + one-line subtitle ("Enter a classifier hit factor to see the percentage and class letter, then optionally send it to What-If as a hypothetical score.").
+
+Form (three controls, equal width, stack on narrow widths):
+- **Division** `Picker` over `Division.allCases`, default `appModel.selectedDivision ?? .carryOptics`.
+- **Classifier** `Picker` over `HHFTable.activeClassifiers()`, label `"\(code) — \(name)"`.
+- **Hit factor** `TextField` with `.keyboardType(.decimalPad)`. Do **not** enforce 4-decimal precision on input — accept whatever the user types.
+
+Buttons in one row:
+- **Calculate** — primary tint (same as `LookupView`'s submit). Tap (or keyboard Done) calls `calculate()`, which validates, runs `Calculator.classify(...)`, and stores `(result, division, code)` in local `@State`. Each input change clears that stored result.
+- **Send to What-If** — secondary tint matching the existing WhatIfPanel "Add hypothetical" button (so the cross-page color tie is preserved: indigo = What-If hypothetical action). Disabled with inline reason text when (a) no result, (b) no record, or (c) scenario at the 8-cap.
+
+Result chip (below buttons, only renders when a result exists):
+- Class-letter pill using the **same palette as SummaryCard's letter chip**: yellow GM, purple M, blue A, green B, orange C, red D, gray U. Do not invent new colors.
+- `String(format: "%.4f%%", pct)` (4 decimals everywhere, matching the rest of the app).
+- Small subtitle: `HHF X.XXXX · <Division name>`.
+
+Side-warning (amber text) when *Send to What-If* would switch the division and therefore clear the scenario.
+
+Today's date for the hand-off:
+```swift
+let today = Date.now.formatted(.iso8601.year().month().day())  // local calendar
+```
+Matches the web's `todayLocalISO()` — TZ-naive, not UTC.
+
+### 6. `Features/WhatIf/WhatIfPanel.swift` (modify)
+
+A scenario hypothetical row currently displays as `"Hypothetical · <pct>%"`. When the hypothetical carries both `date` and `classifierCode` (set only by Calculator), render it like a real score instead: `"<date> · <code> · <pct>%"` — same indigo color and × delete button as today. Detection: `hypothetical.date != nil && hypothetical.classifierCode != nil`.
+
+### 7. `Features/Root/RootView.swift` (modify)
+
+Add the `.calculator` tab at index 4 (after Scores). Its TabView item renders `CalculatorView` with **no** record-required gate (unlike the other three tabs).
+
+## Tests
+
+### `USPSARules/Tests/HHFTableTests.swift`
+
+- `hhf("22-07", .carryOptics) == 9.0749`
+- `hhf("03-03", .carryOptics) == 8.2443`
+- `hhf("25-01", .pcc) == 8.9521`
+- Limited 10 lookups succeed for both legacy (`22-07`) and 25-series codes
+- Whitespace tolerance on the code (`" 22-07 "` resolves)
+- Unknown code / missing inputs → nil
+- `activeClassifiers().count == 63` and the array is sorted ascending by code
+
+### `USPSARules/Tests/CalculatorTests.swift`
+
+- `classify(9.0749, "22-07", .carryOptics)` → `{ pct: 100, letter: .gm, hhf: 9.0749 }`
+- `classify(12.0, "22-07", .carryOptics)` → `pct: 110, letter: .gm` (raw 132%, hits cap)
+- `classify(0.1, "22-07", .open)` → letter `.u`
+- `classify(1.0, "22-07", .open)` → letter `.d`
+- Boundary sweep: for each of GM/M/A/B/C/D, assert just-above and just-below the threshold land on the correct side
+- Null / zero / negative / NaN HF → nil
+- Unknown code → nil
+
+### `AppModelCalculatorHandoffTests.swift`
+
+- Sending a calculator hypothetical into an 8-score scenario evicts the oldest score and the rolling window stays size 8
+- MRO: sending a hypothetical with code matching one in the window evicts that prior score, the oldest unrelated score stays
+- Legacy `.percent`-only hypothetical still uses the 9999 sentinel and grows a sub-8 window unchanged
+
+## Verification
+
+1. `swift test --package-path ios/Packages/USPSARules` — all calculator tests green.
+2. Simulator: navigate to Calculator with no record loaded, enter `22-07` / Carry Optics / `9.0749` → confirm `100.0000% · GM` with the yellow GM chip color matching SummaryCard.
+3. Look up a real record (e.g. `L4898`), select PCC. Open Calculator, change division to Carry Optics, enter a HF, tap Send → confirm app switches to Carry Optics, lands on What-If, the new hypothetical row renders with real date + code + indigo styling, and the projected % **and** the scores list both recompute (Y/F flags + eviction visible).
+4. Confirm the Calculator tab is reachable without a record and that *Send to What-If* is disabled with an inline hint in that state.
+5. Layout/height check on the smallest target device: the two Pickers and the TextField are visually the same height. Native SwiftUI pickers and text fields can render at different intrinsic heights; an explicit `.frame(height:)` may be needed to match.
+
+## Reference: web implementation already shipped
+
+Web equivalents on `main` for cross-reference:
+
+- Data: `src/data/uspsa-hhfs.json`, `src/data/uspsa-classifiers.json`, `src/data/uspsa-divisions.json`
+- Loader: `src/lib/hhf.ts` (+ `hhf.test.ts`)
+- Math: `src/lib/calculator.ts` (+ `calculator.test.ts`) — reuses `classFor` from `src/lib/rules.ts`
+- UI: `src/components/calculator/CalculatorPanel.tsx`, `src/components/calculator/LetterPill.tsx`
+- Store extension: `src/store/useAppStore.ts` (`HypotheticalScore` + `buildScenarioScores` changes)
+- What-If row rendering: `src/components/whatif/WhatIfPanel.tsx`
+- Pipeline tests: `src/components/whatif/WhatIfPanel.test.ts`

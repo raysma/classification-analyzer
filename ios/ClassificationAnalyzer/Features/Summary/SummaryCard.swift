@@ -137,27 +137,7 @@ struct SummaryCard: View {
         Text(displayLetter.rawValue)
             .font(.system(size: 22, weight: .bold))
             .frame(width: 64, height: 64)
-            .background(classColor(displayLetter), in: Circle())
-            .foregroundStyle(classBadgeForeground(displayLetter))
-    }
-
-    private func classColor(_ letter: ClassLetter) -> Color {
-        switch letter {
-        case .gm: return .yellow
-        case .m: return .purple
-        case .a: return .blue
-        case .b: return .green
-        case .c: return .orange
-        case .d: return .red
-        case .u: return .gray
-        }
-    }
-
-    private func classBadgeForeground(_ letter: ClassLetter) -> Color {
-        switch letter {
-        case .gm: return Color(red: 0.4, green: 0.3, blue: 0.0)
-        case .u: return Color(white: 0.3)
-        default: return .white
-        }
+            .background(displayLetter.fillColor, in: Circle())
+            .foregroundStyle(displayLetter.foregroundColor)
     }
 }

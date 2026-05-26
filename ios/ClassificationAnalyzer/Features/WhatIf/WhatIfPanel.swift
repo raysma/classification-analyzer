@@ -34,10 +34,20 @@ struct WhatIfPanel: View {
         return scenario - current
     }
 
-    private var hypoCodeToId: [String: UUID] {
-        Dictionary(uniqueKeysWithValues: appModel.hypotheticalScores.map { h in
-            ("hypo-\(h.id.uuidString)", h.id)
-        })
+    // Resolve a scenario Classifier row back to its source hypothetical
+    // UUID, if any. Form-entered hypotheticals match on the synthetic
+    // "hypo-<uuid>" classifierCode; Calculator-sent hypotheticals match
+    // on (date, classifierCode) — the real values that buildScenarioScores
+    // now stamps onto the synthetic Classifier.
+    private func hypoId(for s: Classifier) -> UUID? {
+        for h in appModel.hypotheticalScores {
+            if let date = h.date, let code = h.classifierCode {
+                if date == s.date && code == s.classifierCode { return h.id }
+            } else if s.classifierCode == "hypo-\(h.id.uuidString)" {
+                return h.id
+            }
+        }
+        return nil
     }
 
     private var displayScores: [Classifier] {
@@ -127,10 +137,10 @@ struct WhatIfPanel: View {
 
     private func row(for s: Classifier) -> some View {
         let id = classifierKey(s)
-        let isHypo = hypoCodeToId.keys.contains(s.classifierCode)
+        let resolvedHypoId = hypoId(for: s)
+        let isHypo = resolvedHypoId != nil
         let isIncluded = scenarioBest.included.contains(where: { classifierKey($0) == id })
         let isDropped = scenarioBest.dropped.contains(where: { classifierKey($0) == id })
-        let hypoId = hypoCodeToId[s.classifierCode]
 
         return HStack(spacing: 8) {
             badge(isIncluded: isIncluded, isDropped: isDropped)
@@ -143,9 +153,9 @@ struct WhatIfPanel: View {
 
             Spacer(minLength: 4)
 
-            if isHypo, let hypoId {
+            if let resolvedHypoId {
                 Button {
-                    appModel.removeHypothetical(id: hypoId)
+                    appModel.removeHypothetical(id: resolvedHypoId)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.tertiary)
@@ -164,7 +174,11 @@ struct WhatIfPanel: View {
     }
 
     private func rowText(s: Classifier, isHypo: Bool) -> String {
-        if isHypo {
+        // Calculator-sent hypotheticals carry a real date + classifier code
+        // (date != "9999-…"). Render them like a real score row but keep
+        // the indigo rowColor so the hypothetical origin stays visible.
+        let isSynthetic = s.date.hasPrefix("9999-")
+        if isHypo, isSynthetic {
             return "Hypothetical · \(String(format: "%.4f%%", s.percent))"
         }
         return "\(s.date) · \(s.classifierCode) · \(String(format: "%.4f%%", s.percent))"

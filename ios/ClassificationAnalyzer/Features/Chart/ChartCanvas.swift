@@ -101,12 +101,12 @@ struct ChartCanvas: View {
         Chart {
             ForEach(Self.bands, id: \.letter) { band in
                 RuleMark(y: .value("Threshold", band.threshold))
-                    .foregroundStyle(color(for: band.letter).opacity(0.55))
+                    .foregroundStyle(band.letter.fillColor.opacity(0.55))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 2]))
                     .annotation(position: .trailing, alignment: .leading, spacing: 4) {
                         Text(band.letter.rawValue)
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(color(for: band.letter))
+                            .foregroundStyle(band.letter.fillColor)
                     }
                     .accessibilityLabel("\(band.letter.rawValue) class threshold")
                     .accessibilityValue("\(Int(band.threshold)) percent")
@@ -126,7 +126,7 @@ struct ChartCanvas: View {
                     x: .value("Date", point.date),
                     y: .value("Percent", point.percent)
                 )
-                .foregroundStyle(color(for: classFor(point.percent)))
+                .foregroundStyle(classFor(point.percent).fillColor)
                 .symbolSize(isSelected(point) ? 110 : 50)
                 .opacity(selectedDate == nil || isSelected(point) ? 1.0 : 0.55)
                 .accessibilityLabel(accessibilityLabel(for: point))
@@ -235,7 +235,7 @@ struct ChartCanvas: View {
             ForEach(selectedPoints) { p in
                 HStack(spacing: 10) {
                     Circle()
-                        .fill(color(for: classFor(p.percent)))
+                        .fill(classFor(p.percent).fillColor)
                         .frame(width: 8, height: 8)
                     Text(p.code)
                         .font(.footnote.monospaced())
@@ -266,18 +266,6 @@ struct ChartCanvas: View {
         guard let selectedDate else { return false }
         let cal = Calendar(identifier: .gregorian)
         return cal.isDate(point.date, inSameDayAs: selectedDate)
-    }
-
-    private func color(for letter: ClassLetter) -> Color {
-        switch letter {
-        case .gm: return .yellow
-        case .m: return .purple
-        case .a: return .blue
-        case .b: return .green
-        case .c: return .orange
-        case .d: return .red
-        case .u: return .gray
-        }
     }
 
     private func accessibilityLabel(for point: PointEntry) -> String {
