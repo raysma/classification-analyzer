@@ -40,7 +40,7 @@ struct LookupTab: View {
 
     private func lookupCard(memberNumber: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Member number")
+            Text("USPSA member number")
                 .font(.headline)
 
             HStack {
