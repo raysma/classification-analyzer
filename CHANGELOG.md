@@ -1,11 +1,21 @@
 # Changelog
 
+## 2026-05-26
+
+### New features
+
+- **Classifier calculator**: new *Calculator* tab — enter a hit factor + division + classifier code to see the USPSA percentage and class letter, then optionally send the result into What-If as a hypothetical row.
+
 ## 2026-05-25
 
 ### New features
 
 - **Recent lookups list**: a list of your last 10 lookups shows under the member-number input — tap to re-run, tap the trash to remove.
 - **Feedback widget**: a *Feedback* link in the footer opens a small modal where you can file a bug, feature request, or general comment. Submissions become public GitHub Issues in `raysma/classification-analyzer` and include auto-attached app version, current URL, division, browser, and viewport size to help with reproduction.
+
+### Bug fixes
+
+- **Chart tooltip flicker**: hovering a score on the progress chart now shows a single, consistent Classification % for the date.
 
 ## 2026-05-24
 

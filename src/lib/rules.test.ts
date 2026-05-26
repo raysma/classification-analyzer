@@ -168,6 +168,28 @@ describe('getClassificationHistory', () => {
     expect(history.length).toBeGreaterThanOrEqual(2) // entries from 4th score onward
     expect(history[0]?.date).toBeDefined()
   })
+
+  // Two scores share a date: there must be exactly one snapshot for that
+  // date, and its percent must reflect both scores in the rolling window.
+  // Otherwise the chart's classification line gets duplicate X values and
+  // the tooltip flickers based on which side of the score-line the cursor is on.
+  it('emits one snapshot per unique date (end-of-day)', () => {
+    const scores: ValidatedClassifier[] = [
+      mkScore(60, '2024-01-01', 'a'),
+      mkScore(70, '2024-02-01', 'b'),
+      mkScore(80, '2024-03-01', 'c'),
+      mkScore(50, '2024-04-01', 'd'),
+      mkScore(90, '2024-04-01', 'e'), // same date as previous
+    ]
+    const history = getClassificationHistory(scores)
+    const aprilEntries = history.filter((h) => h.date === '2024-04-01')
+    expect(aprilEntries).toHaveLength(1)
+    // end-of-day average of all 5 scores: (60+70+80+50+90)/5 = 70
+    expect(aprilEntries[0]?.percent).toBe(70)
+    // dates strictly increasing — no duplicates anywhere
+    const dates = history.map((h) => h.date)
+    expect(new Set(dates).size).toBe(dates.length)
+  })
 })
 
 describe('allTimeBestClass', () => {
