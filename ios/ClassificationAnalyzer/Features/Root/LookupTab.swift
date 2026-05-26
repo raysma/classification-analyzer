@@ -44,7 +44,7 @@ struct LookupTab: View {
                 .font(.headline)
 
             HStack {
-                TextField("e.g. A12345", text: memberNumber)
+                TextField("e.g. A69420", text: memberNumber)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .textFieldStyle(.roundedBorder)
