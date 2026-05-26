@@ -15,6 +15,16 @@ interface Props {
 
 const DIVISIONS = DivisionSchema.options
 
+// Local-calendar today as YYYY-MM-DD. Matches the format USPSA scores use
+// (TZ-naive date strings).
+function todayLocalISO(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
   const selectedDivision = useAppStore((s) => s.selectedDivision)
   const setSelectedDivision = useAppStore((s) => s.setSelectedDivision)
@@ -28,11 +38,13 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
   const [hfInput, setHfInput] = useState<string>('')
   const [result, setResult] = useState<ClassificationResult | null>(null)
   const [resultDivision, setResultDivision] = useState<Division | null>(null)
+  const [resultCode, setResultCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function clearResult() {
     if (result !== null) setResult(null)
     if (resultDivision !== null) setResultDivision(null)
+    if (resultCode !== null) setResultCode(null)
     if (error !== null) setError(null)
   }
 
@@ -42,6 +54,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
     if (!trimmed) {
       setResult(null)
       setResultDivision(null)
+      setResultCode(null)
       setError('Enter a hit factor.')
       return
     }
@@ -49,6 +62,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
     if (!Number.isFinite(n) || n <= 0) {
       setResult(null)
       setResultDivision(null)
+      setResultCode(null)
       setError('Hit factor must be a positive number.')
       return
     }
@@ -56,12 +70,14 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
     if (!r) {
       setResult(null)
       setResultDivision(null)
+      setResultCode(null)
       setError(`No HHF on file for ${code} in ${formatDivision(division)}.`)
       return
     }
     setError(null)
     setResult(r)
     setResultDivision(division)
+    setResultCode(code)
   }
 
   const scenarioFull = hypoCount >= 8
@@ -76,11 +92,13 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
   })()
 
   function handleSend() {
-    if (!result || !resultDivision || !hasRecord || scenarioFull) return
+    if (!result || !resultDivision || !resultCode || !hasRecord || scenarioFull) return
     setSelectedDivision(resultDivision)
     addHypothetical({
       id: `${Date.now()}-${Math.random()}`,
       percent: result.pct,
+      date: todayLocalISO(),
+      classifierCode: resultCode,
     })
     onNavigate('whatif')
   }

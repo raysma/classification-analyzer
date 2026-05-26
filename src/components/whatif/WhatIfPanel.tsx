@@ -24,9 +24,17 @@ export default function WhatIfPanel({ windowScores, currentPercent }: Props) {
   const delta =
     currentPercent !== null && scenarioPct !== null ? scenarioPct - currentPercent : null
 
-  // Map hypo classifierCode → h.id for the remove button
-  const hypoCodeToId = new Map(hypotheticalScores.map((h) => [`hypo-${h.id}`, h.id]))
-  const hypoCodeSet = new Set(hypoCodeToId.keys())
+  // Map full classifierKey → hypothetical, so the remove button finds the
+  // right entry and the row knows whether to render "Hypothetical" or the
+  // real date + code (calculator-sent rows carry real values).
+  const hypoByKey = new Map(
+    hypotheticalScores.map((h, i) => {
+      const date = h.date ?? `9999-${String(i + 1).padStart(2, '0')}-01`
+      const code = h.classifierCode ?? `hypo-${h.id}`
+      const key = `${date}:${code}:${h.percent}`
+      return [key, h]
+    }),
+  )
 
   // Display order: hypotheticals first (newest), then real scores newest-to-oldest
   const displayScores = [...scenarioWindowScores].sort((a, b) => {
@@ -78,10 +86,11 @@ export default function WhatIfPanel({ windowScores, currentPercent }: Props) {
 
         {displayScores.map((s) => {
           const id = classifierKey(s)
-          const isHypo = hypoCodeSet.has(s.classifierCode)
+          const hypo = hypoByKey.get(id)
+          const isHypo = hypo !== undefined
+          const isCalcHypo = isHypo && hypo.date !== undefined && hypo.classifierCode !== undefined
           const isIncluded = scenIncludedIds.has(id)
           const isDropped = scenDroppedIds.has(id)
-          const hypoId = hypoCodeToId.get(s.classifierCode)
 
           return (
             <div key={id} className="flex items-center gap-2 text-xs px-1 py-0.5">
@@ -105,13 +114,14 @@ export default function WhatIfPanel({ windowScores, currentPercent }: Props) {
                       : 'text-gray-700 dark:text-gray-300'
                 }
               >
-                {isHypo ? 'Hypothetical' : s.date}
-                {!isHypo && ` · ${s.classifierCode}`} · {s.percent.toFixed(4)}%
+                {isHypo && !isCalcHypo
+                  ? `Hypothetical · ${s.percent.toFixed(4)}%`
+                  : `${s.date} · ${s.classifierCode} · ${s.percent.toFixed(4)}%`}
               </span>
-              {isHypo && hypoId && (
+              {isHypo && hypo && (
                 <button
                   type="button"
-                  onClick={() => removeHypothetical(hypoId)}
+                  onClick={() => removeHypothetical(hypo.id)}
                   aria-label={`Remove hypothetical ${s.percent.toFixed(4)}%`}
                   className="ml-auto text-gray-400 hover:text-red-500"
                 >
