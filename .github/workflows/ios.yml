@@ -53,6 +53,6 @@ jobs:
           xcodebuild build \
             -project ClassificationAnalyzer.xcodeproj \
             -scheme ClassificationAnalyzer \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
