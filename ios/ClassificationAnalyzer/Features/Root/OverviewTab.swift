@@ -24,15 +24,15 @@ struct OverviewTab: View {
                                 WarningBanner(warnings: appModel.warnings)
                             }
 
-                            ProgressChartView(
-                                classifiers: appModel.activeClassifiers,
-                                history: appModel.classificationHistory
-                            )
-
                             ClassUpInsightsView(
                                 classifiers: appModel.activeClassifiers,
                                 division: division,
                                 officialClass: appModel.officialClass
+                            )
+
+                            ProgressChartView(
+                                classifiers: appModel.activeClassifiers,
+                                history: appModel.classificationHistory
                             )
                         }
 
