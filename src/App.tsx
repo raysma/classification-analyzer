@@ -287,7 +287,7 @@ function AppInner() {
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="text-2xl" aria-hidden="true">🎯</span>
-            <h1 className="text-xl font-bold">USPSA Classification Analyzer</h1>
+            <h1 className="text-xl font-bold">Classification Analyzer</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
