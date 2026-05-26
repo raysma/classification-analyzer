@@ -5,8 +5,14 @@ import USPSARules
 
 // Shared Swift Charts composition used by both the inline ProgressChartView
 // and the full-screen FullscreenChartView. Owns the Marks, axes, gesture
-// handling, and hover-card annotation. Parents own the @State for
-// selectedDate and pass it in as a Binding.
+// handling, and the selection-detail card rendered BELOW the chart.
+// Parents own the @State for selectedDate and pass it in as a Binding.
+//
+// The detail card lives outside the Chart deliberately: in-chart annotations
+// render BEHIND data marks (lines/dots cut through the card content), and
+// clamping annotation overflow to chart bounds still leaves no room for
+// 7-8 score major-match days. A sibling card below the chart sidesteps
+// both — no z-order fight with marks, no overflow into neighboring cards.
 struct ChartCanvas: View {
     let classifiers: [Classifier]
     let history: [ClassificationSnapshot]
@@ -16,6 +22,10 @@ struct ChartCanvas: View {
     // gutter and fewer X ticks; landscape fullscreen gets more of both.
     var trailingPadding: CGFloat = 20
     var xTickCount: Int = 5
+    // Fixed chart plot height. nil = expand to fill available space
+    // (fullscreen). Inline passes 240 so the chart keeps its compact
+    // proportions while the detail card grows naturally below it.
+    var chartHeight: CGFloat? = nil
 
     struct PointEntry: Hashable, Identifiable {
         let date: Date
@@ -67,6 +77,19 @@ struct ChartCanvas: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let chartHeight {
+                chartView.frame(height: chartHeight)
+            } else {
+                chartView.frame(maxHeight: .infinity)
+            }
+            selectionCard
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .animation(.snappy(duration: 0.18), value: selectedDate)
+        }
+    }
+
+    private var chartView: some View {
         Chart {
             ForEach(Self.bands, id: \.letter) { band in
                 RuleMark(y: .value("Threshold", band.threshold))
@@ -81,24 +104,13 @@ struct ChartCanvas: View {
                     .accessibilityValue("\(Int(band.threshold)) percent")
             }
 
-            // Vertical scrub guide + tooltip anchor. Annotation lives on the
-            // RuleMark (not on a PointMark) so the card always floats at the
-            // top of the chart instead of jumping vertically with whichever
-            // dot we selected. y: .fit(to: .chart) clamps the card inside the
-            // chart bounds — without that, multi-score days produced a tall
-            // card that escaped over the classification card above.
+            // Vertical scrub guide. No annotation — the detail card lives
+            // outside the Chart now, so this rule only has to communicate
+            // "this is the X position you're inspecting".
             if let selectedDate {
                 RuleMark(x: .value("Selected", selectedDate))
                     .foregroundStyle(.secondary.opacity(0.45))
                     .lineStyle(StrokeStyle(lineWidth: 1))
-                    .annotation(
-                        position: .top,
-                        alignment: .center,
-                        spacing: 0,
-                        overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
-                    ) {
-                        hoverCard
-                    }
             }
 
             ForEach(pointData) { point in
@@ -196,55 +208,59 @@ struct ChartCanvas: View {
         .sensoryFeedback(.selection, trigger: selectedDate)
     }
 
-    private var hoverCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let selectedDate {
-                Text(selectedDate, format: .dateTime.month().day().year())
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
-            }
+    @ViewBuilder
+    private var selectionCard: some View {
+        if let selectedDate {
+            populatedCard(for: selectedDate)
+        } else {
+            emptyStateCard
+        }
+    }
+
+    private var emptyStateCard: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "hand.point.up.left")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+            Text("Tap or press a point for details")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func populatedCard(for date: Date) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(date, format: .dateTime.month().day().year())
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
             ForEach(selectedPoints) { p in
-                HStack(spacing: 6) {
+                HStack(spacing: 10) {
                     Circle()
                         .fill(color(for: classFor(p.percent)))
                         .frame(width: 8, height: 8)
                     Text(p.code)
-                        .font(.caption.monospaced())
+                        .font(.footnote.monospaced())
                         .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
                     Text(String(format: "%.4f%%", p.percent))
-                        .font(.caption.monospaced())
+                        .font(.footnote.monospaced())
                         .foregroundStyle(.primary)
                 }
             }
             if let avg = selectedAverage {
-                HStack(spacing: 6) {
+                Divider()
+                HStack(spacing: 10) {
                     Circle().fill(Color.cyan).frame(width: 8, height: 8)
                     Text("Classification")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
                     Text(String(format: "%.4f%%", avg))
-                        .font(.caption.monospaced())
+                        .font(.footnote.monospaced())
                         .foregroundStyle(.primary)
                 }
             }
         }
-        .padding(8)
-        // Fully opaque background — neither glass nor material. Glass-on-glass
-        // is forbidden (chart card is already glass on iOS 26), and even
-        // .regularMaterial composites against the wrong backdrop inside chart
-        // annotations and renders darkish in both light and dark mode, killing
-        // text contrast. secondarySystemBackground is an opaque adaptive
-        // system color: light gray in light mode, dark gray in dark mode —
-        // matches Apple Health's tooltip card and guarantees text contrast.
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(.separator, lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
     }
 
     private func isSelected(_ point: PointEntry) -> Bool {

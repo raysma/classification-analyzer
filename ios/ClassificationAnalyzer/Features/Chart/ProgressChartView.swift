@@ -37,9 +37,9 @@ struct ProgressChartView: View {
                 history: history,
                 selectedDate: $selectedDate,
                 trailingPadding: 20,
-                xTickCount: 5
+                xTickCount: 5,
+                chartHeight: 240
             )
-            .frame(height: 240)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
