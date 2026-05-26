@@ -51,6 +51,24 @@ struct LookupTab: View {
                     .submitLabel(.search)
                     .focused($memberFieldFocused)
                     .onSubmit { triggerLookup() }
+                    // Trailing X-circle clear button — mirrors UITextField's
+                    // .clearButtonMode = .whileEditing and the UISearchBar
+                    // convention. Visible only when the field has content,
+                    // so a fresh field doesn't show a dead affordance.
+                    .overlay(alignment: .trailing) {
+                        if !memberNumber.wrappedValue.isEmpty {
+                            Button {
+                                memberNumber.wrappedValue = ""
+                                memberFieldFocused = true
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 6)
+                            .accessibilityLabel("Clear member number")
+                        }
+                    }
 
                 Button {
                     triggerLookup()

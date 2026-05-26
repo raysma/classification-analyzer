@@ -205,9 +205,18 @@ final class AppModel {
 
     // MARK: What-if scenario
 
-    func addHypothetical(percent: Double) {
+    func addHypothetical(
+        percent: Double, date: String? = nil, classifierCode: String? = nil
+    ) {
         guard hypotheticalScores.count < 8 else { return }
-        hypotheticalScores.append(HypotheticalScore(id: UUID(), percent: percent))
+        hypotheticalScores.append(
+            HypotheticalScore(
+                id: UUID(),
+                percent: percent,
+                date: date,
+                classifierCode: classifierCode
+            )
+        )
     }
 
     func removeHypothetical(id: UUID) {
@@ -221,9 +230,14 @@ final class AppModel {
     func buildScenarioScores(windowScores: [Classifier]) -> [Classifier] {
         let synthetic = hypotheticalScores.enumerated().map { i, h in
             let mm = String(format: "%02d", i + 1)
+            // Prefer real date/code (Calculator-sent rows) so MRO and date
+            // ordering behave like a real reshoot. Otherwise fall back to
+            // synthetic sentinels for form-entered hypotheticals.
+            let dateStr = h.date ?? "9999-\(mm)-01"
+            let codeStr = h.classifierCode ?? "hypo-\(h.id.uuidString)"
             return Classifier(
-                date: "9999-\(mm)-01",
-                classifierCode: "hypo-\(h.id.uuidString)",
+                date: dateStr,
+                classifierCode: codeStr,
                 classifierName: nil,
                 hitFactor: nil,
                 percent: h.percent,
@@ -234,9 +248,4 @@ final class AppModel {
         }
         return windowScores + synthetic
     }
-}
-
-struct HypotheticalScore: Identifiable, Hashable, Sendable {
-    let id: UUID
-    let percent: Double
 }

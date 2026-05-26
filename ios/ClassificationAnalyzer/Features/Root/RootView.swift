@@ -22,6 +22,10 @@ struct RootView: View {
             ScoresTab(selectedTab: $selectedTab)
                 .tabItem { Label("Scores", systemImage: "list.bullet") }
                 .tag(3)
+
+            CalculatorView(selectedTab: $selectedTab)
+                .tabItem { Label("Calculator", systemImage: "function") }
+                .tag(4)
         }
         .onChange(of: selectedTab) { _, _ in
             // SwiftUI's TabView keeps focus on the previously-focused TextField

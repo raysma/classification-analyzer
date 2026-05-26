@@ -14,6 +14,7 @@ let package = Package(
         .target(
             name: "USPSARules",
             dependencies: ["USPSADomain"],
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
