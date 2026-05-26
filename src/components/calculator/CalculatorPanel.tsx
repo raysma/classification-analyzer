@@ -65,8 +65,8 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <label className="space-y-1">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <label className="block space-y-1 sm:flex-1 sm:basis-0 min-w-0">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Division
           </span>
@@ -74,7 +74,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             value={division}
             onChange={(e) => setDivision(e.target.value as Division)}
             aria-label="Division"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           >
             {DIVISIONS.map((d) => (
               <option key={d} value={d}>
@@ -84,7 +84,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </select>
         </label>
 
-        <label className="space-y-1 sm:col-span-1">
+        <label className="block space-y-1 sm:flex-1 sm:basis-0 min-w-0">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Classifier
           </span>
@@ -92,7 +92,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             aria-label="Classifier"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           >
             {classifiers.map((c) => (
               <option key={c.code} value={c.code}>
@@ -102,7 +102,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </select>
         </label>
 
-        <label className="space-y-1">
+        <label className="block space-y-1 sm:flex-1 sm:basis-0 min-w-0">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Hit factor
           </span>
@@ -115,7 +115,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             onChange={(e) => setHfInput(e.target.value)}
             placeholder="e.g. 9.0749"
             aria-label="Hit factor"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="block w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
           />
         </label>
       </div>
