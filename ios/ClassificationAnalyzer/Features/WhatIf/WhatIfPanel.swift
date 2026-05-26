@@ -185,7 +185,7 @@ struct WhatIfPanel: View {
     }
 
     private func rowColor(isHypo: Bool, isDropped: Bool) -> Color {
-        if isHypo { return .indigo }
+        if isHypo { return .purple }
         if isDropped { return .secondary }
         return .primary
     }
