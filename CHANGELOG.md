@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-26
+
+### New features
+
+- **Classifier calculator**: new *Calculator* tab — enter a hit factor + division + classifier code to see the USPSA percentage and class letter, then optionally send the result into What-If as a hypothetical row.
+
 ## 2026-05-25
 
 ### New features
