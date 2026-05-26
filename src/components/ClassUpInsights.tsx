@@ -101,7 +101,7 @@ export default function ClassUpInsights({ classifiers, division, officialClass }
             </option>
           ))}
         </select>
-        <span>class — {isDown ? 'maximum allowed' : 'required'} average</span>
+        <span>class — {isDown ? 'max allowed' : 'required'} average</span>
       </div>
       <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
         {results.map(({ k, requiredPercent, feasible }) => (
