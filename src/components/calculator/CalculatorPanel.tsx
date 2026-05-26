@@ -173,7 +173,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
               setHfInput(e.target.value)
               clearResult()
             }}
-            placeholder="e.g. 9.0749"
+            placeholder="e.g. 6.9420"
             aria-label="Hit factor"
             className="w-full h-9 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-base sm:text-sm"
           />
