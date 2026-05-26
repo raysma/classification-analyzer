@@ -36,7 +36,7 @@ final class ShooterRecordCodableTests: XCTestCase {
         XCTAssertEqual(record.classifiers[.carryOptics]?.count, 2)
         XCTAssertEqual(record.classifiers[.carryOptics]?.first?.classifierCode, "99-11")
         XCTAssertEqual(record.classifiers[.carryOptics]?.first?.flag, .y)
-        XCTAssertEqual(record.classifiers[.carryOptics]?[1].flag, .none)
+        XCTAssertEqual(record.classifiers[.carryOptics]?[1].flag, Flag.none)
         XCTAssertEqual(record.classifiers[.carryOptics]?[1].hitFactor, 5.8)
     }
 
