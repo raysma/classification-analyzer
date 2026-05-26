@@ -3,16 +3,23 @@ import Charts
 import USPSADomain
 import USPSARules
 
-// Shared Swift Charts composition used by both the inline ProgressChartView
+// Shared Swift Charts composition used by the inline ProgressChartView
 // and the full-screen FullscreenChartView. Owns the Marks, axes, gesture
-// handling, and the selection-detail card rendered BELOW the chart.
-// Parents own the @State for selectedDate and pass it in as a Binding.
+// handling, and the selection-detail card. Parents own the @State for
+// selectedDate and pass it in as a Binding.
 //
-// The detail card lives outside the Chart deliberately: in-chart annotations
+// The detail card lives OUTSIDE the Chart deliberately: in-chart annotations
 // render BEHIND data marks (lines/dots cut through the card content), and
 // clamping annotation overflow to chart bounds still leaves no room for
-// 7-8 score major-match days. A sibling card below the chart sidesteps
-// both — no z-order fight with marks, no overflow into neighboring cards.
+// 7-8 score major-match days. A sibling card sidesteps both — no z-order
+// fight with marks, no overflow into neighboring cards.
+//
+// The chart and the card are exposed as separate views (body + the public
+// selectionDetailCard property) so each consumer can lay them out per its
+// own space budget: inline stacks vertically and lets the card flow,
+// portrait fullscreen reserves fixed card height with internal scrolling,
+// landscape fullscreen puts the card on the trailing side using the
+// horizontal real estate instead of fighting for vertical space.
 struct ChartCanvas: View {
     let classifiers: [Classifier]
     let history: [ClassificationSnapshot]
@@ -22,10 +29,6 @@ struct ChartCanvas: View {
     // gutter and fewer X ticks; landscape fullscreen gets more of both.
     var trailingPadding: CGFloat = 20
     var xTickCount: Int = 5
-    // Fixed chart plot height. nil = expand to fill available space
-    // (fullscreen). Inline passes 240 so the chart keeps its compact
-    // proportions while the detail card grows naturally below it.
-    var chartHeight: CGFloat? = nil
 
     struct PointEntry: Hashable, Identifiable {
         let date: Date
@@ -77,15 +80,20 @@ struct ChartCanvas: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let chartHeight {
-                chartView.frame(height: chartHeight)
-            } else {
-                chartView.frame(maxHeight: .infinity)
-            }
-            selectionCard
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .animation(.snappy(duration: 0.18), value: selectedDate)
+        chartView
+    }
+
+    // Public so parents can place the detail card anywhere they want
+    // relative to the chart — VStack below for inline + portrait fullscreen,
+    // HStack trailing for landscape fullscreen. The card reads selectedDate
+    // through the same Binding the chart writes to, so they stay in sync
+    // even rendered in separate locations.
+    @ViewBuilder
+    var selectionDetailCard: some View {
+        if let selectedDate {
+            populatedCard(for: selectedDate)
+        } else {
+            emptyStateCard
         }
     }
 
@@ -206,15 +214,6 @@ struct ChartCanvas: View {
         // Apple Health / Stocks emit a selection haptic when scrubbing
         // across data points; match that.
         .sensoryFeedback(.selection, trigger: selectedDate)
-    }
-
-    @ViewBuilder
-    private var selectionCard: some View {
-        if let selectedDate {
-            populatedCard(for: selectedDate)
-        } else {
-            emptyStateCard
-        }
     }
 
     private var emptyStateCard: some View {

@@ -18,7 +18,15 @@ struct ProgressChartView: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let canvas = ChartCanvas(
+            classifiers: classifiers,
+            history: history,
+            selectedDate: $selectedDate,
+            trailingPadding: 20,
+            xTickCount: 5
+        )
+
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Score history")
                     .font(.headline)
@@ -32,14 +40,11 @@ struct ProgressChartView: View {
                 .accessibilityLabel("Expand chart")
             }
 
-            ChartCanvas(
-                classifiers: classifiers,
-                history: history,
-                selectedDate: $selectedDate,
-                trailingPadding: 20,
-                xTickCount: 5,
-                chartHeight: 240
-            )
+            canvas.frame(height: 240)
+
+            canvas.selectionDetailCard
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .animation(.snappy(duration: 0.18), value: selectedDate)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
