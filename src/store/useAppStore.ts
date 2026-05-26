@@ -6,6 +6,11 @@ import type { ValidatedShooterRecord, ValidatedClassifier } from '../lib/validat
 export interface HypotheticalScore {
   id: string
   percent: number
+  // Only set when the hypothetical comes from the Calculator tab. When set,
+  // the scenario row is built with the real values so MRO collisions with
+  // existing history work the way USPSA would actually score them.
+  date?: string
+  classifierCode?: string
 }
 
 export const RECENT_LOOKUPS_CAP = 10
@@ -113,8 +118,8 @@ export const useAppStore = create<AppState>()(
       buildScenarioScores: (windowScores) => {
         const { hypotheticalScores } = get()
         const hypo: ValidatedClassifier[] = hypotheticalScores.map((h, i) => ({
-          date: `9999-${String(i + 1).padStart(2, '0')}-01`,
-          classifierCode: `hypo-${h.id}`,
+          date: h.date ?? `9999-${String(i + 1).padStart(2, '0')}-01`,
+          classifierCode: h.classifierCode ?? `hypo-${h.id}`,
           percent: h.percent,
           flag: 'Y' as const,
           source: 'club' as const,
