@@ -117,7 +117,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <label className="block space-y-1 min-w-0">
+        <label className="space-y-1">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Division
           </span>
@@ -128,7 +128,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
               clearResult()
             }}
             aria-label="Division"
-            className="block w-full min-w-0 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="w-full h-9 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-base sm:text-sm"
           >
             {DIVISIONS.map((d) => (
               <option key={d} value={d}>
@@ -138,7 +138,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </select>
         </label>
 
-        <label className="block space-y-1 min-w-0">
+        <label className="space-y-1">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Classifier
           </span>
@@ -149,7 +149,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
               clearResult()
             }}
             aria-label="Classifier"
-            className="block w-full min-w-0 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="w-full h-9 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-base sm:text-sm"
           >
             {classifiers.map((c) => (
               <option key={c.code} value={c.code}>
@@ -159,7 +159,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           </select>
         </label>
 
-        <label className="block space-y-1 min-w-0">
+        <label className="space-y-1">
           <span className="block text-xs font-medium text-gray-600 dark:text-gray-400">
             Hit factor
           </span>
@@ -175,7 +175,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             }}
             placeholder="e.g. 9.0749"
             aria-label="Hit factor"
-            className="block w-full min-w-0 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+            className="w-full h-9 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-base sm:text-sm"
           />
         </label>
       </div>
@@ -192,7 +192,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
           onClick={handleSend}
           disabled={sendDisabledReason !== null}
           title={sendDisabledReason ?? undefined}
-          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-md bg-indigo-100 dark:bg-indigo-950 px-3 py-1.5 text-sm font-medium text-indigo-700 dark:text-indigo-200 hover:bg-indigo-200 dark:hover:bg-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Send to What-If
         </button>
