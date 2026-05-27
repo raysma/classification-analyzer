@@ -171,4 +171,64 @@ describe('parsePastedTable', () => {
       expect(result.classifiers.every((c) => c.classifierCode !== 'Number')).toBe(true)
     })
   })
+
+  describe('whitespace fallback — browsers that strip tabs on copy', () => {
+    const spaceSeparated = [
+      'Date     Number     Club     F     Percent     HF     Entered     Source',
+      '5/23/26     25-07     Dundee Practical Shooters     Y     71.6870     7.9179     5/24/26     Stage Score',
+      '4/25/26     13-04     Dundee Practical Shooters     F     58.4677     7.1130     4/29/26     Stage Score',
+      '4/05/26     03-03     Custer Sportsmens Club     Y     67.7559     5.5860     4/23/26     Stage Score',
+    ].join('\n')
+
+    it('parses space-separated new-format rows', () => {
+      const result = parsePastedTable(spaceSeparated, 'CarryOptics')
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.parsedRows).toBe(3)
+      expect(result.skippedRows).toBe(0)
+    })
+
+    it('preserves dates, codes, clubs, flags, percents, and HFs', () => {
+      const result = parsePastedTable(spaceSeparated, 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      const [first, , third] = result.classifiers
+      expect(first?.date).toBe('2026-05-23')
+      expect(first?.classifierCode).toBe('25-07')
+      expect(first?.percent).toBeCloseTo(71.687)
+      expect(first?.hitFactor).toBeCloseTo(7.9179)
+      expect(first?.flag).toBe('Y')
+      expect(third?.date).toBe('2026-04-05')
+    })
+
+    it('preserves multi-word club and source cells', () => {
+      const result = parsePastedTable(spaceSeparated, 'CarryOptics')
+      if (!result.ok) throw new Error('parse failed')
+      const flags = result.classifiers.map((c) => c.flag)
+      expect(flags).toEqual(['Y', 'F', 'Y'])
+    })
+
+    it('treats a 7-column row as new-format with empty flag', () => {
+      const input = [
+        'Date     Number     Club     F     Percent     HF     Entered     Source',
+        '5/23/26     25-07     Dundee Practical Shooters     71.6870     7.9179     5/24/26     Stage Score',
+      ].join('\n')
+      const result = parsePastedTable(input, 'CarryOptics')
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.parsedRows).toBe(1)
+      expect(result.classifiers[0]?.flag).toBe('')
+      expect(result.classifiers[0]?.classifierCode).toBe('25-07')
+    })
+
+    it('still parses tab-separated input unchanged', () => {
+      const tabInput = [
+        'Date\tNumber\tClub\tF\tPercent\tHF\tEntered\tSource',
+        '5/23/26\t25-07\tDundee Practical Shooters\tY\t71.6870\t7.9179\t5/24/26\tStage Score',
+      ].join('\n')
+      const result = parsePastedTable(tabInput, 'CarryOptics')
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.parsedRows).toBe(1)
+    })
+  })
 })
