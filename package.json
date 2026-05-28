@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
-    "@sentry/node": "^10.53.1",
+    "@sentry/node": "^10.54.0",
     "@tanstack/query-sync-storage-persister": "^5.100.14",
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-query-persist-client": "^5.100.14",
@@ -31,7 +31,7 @@
     "react-dom": "^19.2.6",
     "recharts": "^2.15.3",
     "zod": "^3.25.53",
-    "zustand": "^5.0.5"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
@@ -41,9 +41,9 @@
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^18.3.7",
-    "@typescript-eslint/eslint-plugin": "^8.59.4",
-    "@typescript-eslint/parser": "^8.59.4",
-    "@vercel/node": "^5.8.4",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "@vercel/node": "^5.8.6",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.29.0",
