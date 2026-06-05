@@ -266,6 +266,35 @@ describe('feedback endpoint', () => {
     expect(sent.body).toContain('**Viewport:** _redacted_')
   })
 
+  it('neutralizes markdown/html injection in description and context', async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({ html_url: 'https://github.com/o/r/issues/1', number: 1 }),
+          { status: 201 },
+        ),
+    )
+    globalThis.fetch = fetchSpy
+    const body = validBody()
+    body.description =
+      'hi @maintainer </details> see [click](https://evil.example) <img src=x onerror=alert(1)>'
+    body.context.memberNumber = 'A12345'
+    const req = makeReq({ body }, '10.0.3.0')
+    const res = makeRes()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await handler(req as any, res as any)
+    const sent = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body)) as { body: string }
+    // No raw mention, link syntax, or HTML from user input survives into the body.
+    expect(sent.body).not.toContain('@maintainer')
+    expect(sent.body).not.toContain('[click](')
+    expect(sent.body).not.toContain('<img')
+    expect(sent.body).toContain('&#64;maintainer')
+    expect(sent.body).toContain('&lt;img')
+    expect(sent.body).toContain('&lt;/details&gt;') // injected closing tag is escaped
+    // The template's own legitimate <details> block is untouched.
+    expect(sent.body).toContain('<summary>Auto-attached context</summary>')
+  })
+
   it('strips backticks from title', async () => {
     const fetchSpy = vi.fn<typeof fetch>(
       async () =>

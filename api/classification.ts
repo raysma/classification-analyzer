@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/node'
 import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
 import { fetchViaZyte, ZYTE_TIMEOUT_MS } from './_lib/zyteClient.js'
+import { getClientIp } from './_lib/clientIp.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
@@ -69,10 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const ip =
-    (typeof req.headers['x-forwarded-for'] === 'string'
-      ? req.headers['x-forwarded-for'].split(',')[0]
-      : req.socket.remoteAddress) ?? 'unknown'
+  const ip = getClientIp(req)
   if (!checkRateLimit(ip)) {
     res.status(429).json({ error: 'rate_limited' })
     return
