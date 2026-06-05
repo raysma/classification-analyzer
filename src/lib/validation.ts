@@ -14,7 +14,24 @@ export const DivisionSchema = z.enum([
 
 export const ClassLetterSchema = z.enum(['GM', 'M', 'A', 'B', 'C', 'D', 'U'])
 
-export const FlagSchema = z.enum(['S', 'M', 'E', 'F', 'A', 'I', 'X', 'Y', 'P', 'Q', 'N', 'B', 'C', 'D', 'G', ''])
+export const FlagSchema = z.enum([
+  'S',
+  'M',
+  'E',
+  'F',
+  'A',
+  'I',
+  'X',
+  'Y',
+  'P',
+  'Q',
+  'N',
+  'B',
+  'C',
+  'D',
+  'G',
+  '',
+])
 
 export const ClassifierSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -50,11 +67,23 @@ export const FeedbackTypeSchema = z.enum(['bug', 'feature_request', 'other'])
 
 export const FeedbackContextSchema = z.object({
   appSha: z.string().max(64).nullable(),
-  url: z.string().url().max(2048).nullable(),
-  memberNumber: z.string().max(20).nullable(),
+  url: z
+    .string()
+    .url()
+    .max(2048)
+    .refine((u) => /^https?:\/\//i.test(u), 'url must use http(s)')
+    .nullable(),
+  memberNumber: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z0-9-]*$/)
+    .nullable(),
   division: DivisionSchema.nullable(),
   userAgent: z.string().max(500).nullable(),
-  viewport: z.string().regex(/^\d+x\d+$/).nullable(),
+  viewport: z
+    .string()
+    .regex(/^\d+x\d+$/)
+    .nullable(),
   timestamp: z.string().min(1).max(40),
 })
 
