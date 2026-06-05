@@ -21,6 +21,20 @@ const OLD_CLUB_ROW_RE =
 const OLD_MAJOR_ROW_RE =
   /^(\d{1,2}\/\d{1,2}\/\d{2,4})\tMajor Match\t([^\t]*)\t\t([\d.]+)\t([A-Z]?)\t(.*)$/i
 
+// When a line has no tabs (some browsers/clipboards strip tab characters when
+// copying from HTML tables), fall back to splitting on runs of 2+ whitespace.
+// New format expects 8 columns; if we get 7, assume the missing column is the
+// flag (the most common empty cell in USPSA tables) and insert it.
+function normalizeWhitespaceToTabs(line: string): string {
+  if (line.includes('\t')) return line
+  const cols = line.split(/[ \t]{2,}/)
+  const startsWithDate = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(cols[0] ?? '')
+  if (startsWithDate && cols.length === 7) {
+    cols.splice(3, 0, '')
+  }
+  return cols.join('\t')
+}
+
 function parseDate(raw: string): string | null {
   const trimmed = raw.trim()
   // Accepts M/D/YYYY or M/D/YY (2-digit year expanded to 20xx for < 50, else 19xx)
@@ -59,12 +73,14 @@ export function parsePastedTable(
   let parsedRows = 0
   let skippedRows = 0
 
-  for (const line of lines) {
-    const trimmed = line.trim()
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim()
     if (!trimmed) continue
 
+    const line = normalizeWhitespaceToTabs(rawLine)
+
     // Skip header rows (both old and new format start with "Date\t")
-    if (/^date\t/i.test(trimmed)) continue
+    if (/^date\t/i.test(line.trim())) continue
 
     // --- New 8-column format (USPSA 2025+) ---
     const newMatch = NEW_ROW_RE.exec(line)
