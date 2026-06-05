@@ -108,7 +108,7 @@ export default function ManualPastePanel() {
             rows={8}
             placeholder="Paste classifier table here…"
             aria-label="Paste classifier data"
-            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-base sm:text-xs font-mono resize-y"
+            className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 px-3 py-2 text-base sm:text-xs font-mono resize-y"
           />
 
           <div className="flex gap-2 flex-wrap">

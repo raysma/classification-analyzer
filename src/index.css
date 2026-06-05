@@ -1,6 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Paint the root element so iOS safe-area insets and overscroll bounce
+   match the theme instead of revealing the browser's default white. */
+@layer base {
+  html {
+    @apply bg-white dark:bg-gray-950;
+  }
+}
 
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
