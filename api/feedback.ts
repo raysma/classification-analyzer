@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import * as Sentry from '@sentry/node'
 import { FeedbackInputSchema, type FeedbackInput } from '../src/lib/validation.js'
 import { getClientIp } from './_lib/clientIp.js'
+import { checkRateLimit } from './_lib/rateLimit.js'
 
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
 const DEFAULT_REPO = 'raysma/classification-analyzer'
@@ -34,24 +35,9 @@ async function reportFailure(
   await Sentry.flush(2000).catch(() => {})
 }
 
-// In-memory rate limit: 5 submissions per IP per 10-minute window.
-// Tighter than classification's read endpoint because submissions become
-// public GitHub Issues.
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT_WINDOW_MS = 10 * 60_000
-const RATE_LIMIT_MAX = 5
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitStore.get(ip)
-  if (!entry || now >= entry.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
+// 5 submissions per IP per 10-minute window — tighter than classification's read
+// endpoint because submissions become public GitHub Issues.
+const RATE_LIMIT = { prefix: 'rl:feedback', max: 5, windowSeconds: 10 * 60 }
 
 function hashIp(ip: string): string {
   return createHash('sha256').update(ip).digest('hex').slice(0, 8)
@@ -135,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const ip = getClientIp(req)
 
-  if (!checkRateLimit(ip)) {
+  if (!(await checkRateLimit(ip, RATE_LIMIT))) {
     res.status(429).json({ error: 'rate_limited' })
     return
   }

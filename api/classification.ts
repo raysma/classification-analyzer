@@ -5,6 +5,9 @@ import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
 import { fetchViaZyte, ZYTE_TIMEOUT_MS } from './_lib/zyteClient.js'
 import { getClientIp } from './_lib/clientIp.js'
+import { checkRateLimit } from './_lib/rateLimit.js'
+import { cacheGet, cacheSet } from './_lib/cache.js'
+import type { ValidatedShooterRecord } from '../src/lib/validation.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
@@ -35,23 +38,13 @@ async function reportFailure(
   await Sentry.flush(2000).catch(() => {})
 }
 
-// In-memory rate limit: 20 requests per IP per 60-second window.
-// Imperfect across cold-start instances, but catches burst abuse on warm functions.
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 20
+// 20 requests per IP per 60-second window, keyed on the trusted client IP.
+const RATE_LIMIT = { prefix: 'rl:classification', max: 20, windowSeconds: 60 }
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const entry = rateLimitStore.get(ip)
-  if (!entry || now >= entry.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return true
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
-}
+// Cache successful lookups so repeat requests for the same member don't each
+// trigger a (billable) Zyte browser render. Matches the CDN s-maxage window.
+const CACHE_TTL_SECONDS = 900
+type CachedRecord = ValidatedShooterRecord & { warnings: string[] }
 
 function hashMember(member: string): string {
   return createHash('sha256').update(member).digest('hex').slice(0, 8)
@@ -71,8 +64,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const ip = getClientIp(req)
-  if (!checkRateLimit(ip)) {
+  if (!(await checkRateLimit(ip, RATE_LIMIT))) {
     res.status(429).json({ error: 'rate_limited' })
+    return
+  }
+
+  const cacheKey = `classification:v1:${member}`
+  const cached = await cacheGet<CachedRecord>(cacheKey)
+  if (cached) {
+    res.setHeader('Cache-Control', 'private, max-age=0, s-maxage=900, stale-while-revalidate=3600')
+    res.setHeader('X-Cache', 'HIT')
+    res.status(200).json(cached)
     return
   }
 
@@ -217,6 +219,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  const payload: CachedRecord = { ...validated.data, warnings: parsed.warnings }
+  // Only cache clean parses; a degraded result (warnings) shouldn't be re-served
+  // for the full window.
+  if (parsed.warnings.length === 0) {
+    await cacheSet(cacheKey, payload, CACHE_TTL_SECONDS)
+  }
+
   res.setHeader('Cache-Control', 'private, max-age=0, s-maxage=900, stale-while-revalidate=3600')
-  res.status(200).json({ ...validated.data, warnings: parsed.warnings })
+  res.setHeader('X-Cache', 'MISS')
+  res.status(200).json(payload)
 }
