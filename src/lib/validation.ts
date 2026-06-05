@@ -35,13 +35,13 @@ export const FlagSchema = z.enum([
 
 export const ClassifierSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  classifierCode: z.string().min(1),
-  classifierName: z.string().optional(),
+  classifierCode: z.string().min(1).max(32),
+  classifierName: z.string().max(200).optional(),
   hitFactor: z.number().optional(),
   percent: z.number().min(0).max(200),
   flag: FlagSchema,
   source: z.enum(['club', 'majorMatch']),
-  matchName: z.string().optional(),
+  matchName: z.string().max(500).optional(),
 })
 
 export const CurrentClassSchema = z.object({
@@ -51,17 +51,23 @@ export const CurrentClassSchema = z.object({
 })
 
 export const ShooterRecordSchema = z.object({
-  memberNumber: z.string().min(1),
-  name: z.string(),
+  memberNumber: z.string().min(1).max(32),
+  name: z.string().max(200),
   membershipType: z.enum(['Annual', 'ThreeYear', 'FiveYear', 'Lifetime', 'Unknown']),
   currentClasses: z.partialRecord(DivisionSchema, CurrentClassSchema),
-  classifiers: z.partialRecord(DivisionSchema, z.array(ClassifierSchema)),
-  fetchedAt: z.string(),
+  classifiers: z.partialRecord(DivisionSchema, z.array(ClassifierSchema).max(5000)),
+  fetchedAt: z.string().max(40),
   source: z.enum(['fetch', 'paste']),
 })
 
 export type ValidatedClassifier = z.infer<typeof ClassifierSchema>
 export type ValidatedShooterRecord = z.infer<typeof ShooterRecordSchema>
+
+export const RecentLookupSchema = z.object({
+  memberNumber: z.string().min(1).max(32),
+  name: z.string().max(200),
+  lastLookedUpAt: z.string().min(1).max(40),
+})
 
 export const FeedbackTypeSchema = z.enum(['bug', 'feature_request', 'other'])
 
@@ -96,7 +102,10 @@ export const FeedbackInputSchema = z.object({
 
 export const FeedbackResponseSchema = z.object({
   ok: z.literal(true),
-  issueUrl: z.string().url(),
+  issueUrl: z
+    .string()
+    .url()
+    .refine((u) => u.startsWith('https://github.com/'), 'must be a github.com URL'),
   issueNumber: z.number().int().positive(),
 })
 

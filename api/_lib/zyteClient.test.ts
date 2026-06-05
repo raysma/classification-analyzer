@@ -50,10 +50,11 @@ describe('fetchViaZyte', () => {
   })
 
   it('returns ok with html and upstream status on success', async () => {
-    mockFetch(async () =>
-      new Response(JSON.stringify({ browserHtml: '<html>ok</html>', statusCode: 200 }), {
-        status: 200,
-      }),
+    mockFetch(
+      async () =>
+        new Response(JSON.stringify({ browserHtml: '<html>ok</html>', statusCode: 200 }), {
+          status: 200,
+        }),
     )
     const r = await fetchViaZyte('https://uspsa.org/classification/A1')
     expect(r.ok).toBe(true)
@@ -64,8 +65,9 @@ describe('fetchViaZyte', () => {
   })
 
   it('maps body.statusCode 404 to upstream_404', async () => {
-    mockFetch(async () =>
-      new Response(JSON.stringify({ browserHtml: '<html/>', statusCode: 404 }), { status: 200 }),
+    mockFetch(
+      async () =>
+        new Response(JSON.stringify({ browserHtml: '<html/>', statusCode: 404 }), { status: 200 }),
     )
     const r = await fetchViaZyte('https://uspsa.org/classification/A1')
     expect(r.ok).toBe(false)
@@ -113,9 +115,7 @@ describe('fetchViaZyte', () => {
   })
 
   it('maps response with missing browserHtml field to other', async () => {
-    mockFetch(async () =>
-      new Response(JSON.stringify({ statusCode: 200 }), { status: 200 }),
-    )
+    mockFetch(async () => new Response(JSON.stringify({ statusCode: 200 }), { status: 200 }))
     const r = await fetchViaZyte('https://uspsa.org/classification/A1')
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.reason).toBe('other')
@@ -128,6 +128,40 @@ describe('fetchViaZyte', () => {
     if (!r.ok) {
       expect(r.reason).toBe('other')
       expect(r.httpStatus).toBe(400)
+    }
+  })
+
+  it('treats a non-2xx upstream statusCode as a fetch error, not a parse failure', async () => {
+    mockFetch(
+      async () =>
+        new Response(JSON.stringify({ browserHtml: '<html>bot block</html>', statusCode: 403 }), {
+          status: 200,
+        }),
+    )
+    const r = await fetchViaZyte('https://uspsa.org/classification/A1')
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.reason).toBe('other')
+      expect(r.httpStatus).toBe(403)
+    }
+  })
+
+  it('errors instead of assuming 200 when statusCode is missing and html is empty', async () => {
+    mockFetch(async () => new Response(JSON.stringify({}), { status: 200 }))
+    const r = await fetchViaZyte('https://uspsa.org/classification/A1')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.reason).toBe('other')
+  })
+
+  it('still succeeds (as 200) when statusCode is missing but html is present', async () => {
+    mockFetch(
+      async () => new Response(JSON.stringify({ browserHtml: '<html>ok</html>' }), { status: 200 }),
+    )
+    const r = await fetchViaZyte('https://uspsa.org/classification/A1')
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.html).toBe('<html>ok</html>')
+      expect(r.upstreamStatus).toBe(200)
     }
   })
 })
