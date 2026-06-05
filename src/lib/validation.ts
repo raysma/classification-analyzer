@@ -37,8 +37,8 @@ export const ShooterRecordSchema = z.object({
   memberNumber: z.string().min(1),
   name: z.string(),
   membershipType: z.enum(['Annual', 'ThreeYear', 'FiveYear', 'Lifetime', 'Unknown']),
-  currentClasses: z.record(DivisionSchema, CurrentClassSchema),
-  classifiers: z.record(DivisionSchema, z.array(ClassifierSchema)),
+  currentClasses: z.partialRecord(DivisionSchema, CurrentClassSchema),
+  classifiers: z.partialRecord(DivisionSchema, z.array(ClassifierSchema)),
   fetchedAt: z.string(),
   source: z.enum(['fetch', 'paste']),
 })
