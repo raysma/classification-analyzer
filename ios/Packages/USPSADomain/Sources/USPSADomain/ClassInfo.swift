@@ -11,3 +11,14 @@ public struct ClassInfo: Codable, Sendable, Hashable {
         self.highPercent = highPercent
     }
 }
+
+extension ClassInfo {
+    /// Defensive clamp of numeric fields after decoding a proxy response.
+    func sanitized() -> ClassInfo {
+        ClassInfo(
+            letter: letter,
+            percent: percent.clamped(to: 0...200),
+            highPercent: highPercent.clamped(to: 0...200)
+        )
+    }
+}

@@ -56,6 +56,25 @@ final class ShooterRecordCodableTests: XCTestCase {
         XCTAssertEqual(classifier.flag, .b)
     }
 
+    func testDecodeClampsOutOfRangePercent() throws {
+        let json = """
+        {
+            "memberNumber": "A1", "name": "X", "membershipType": "Annual",
+            "currentClasses": { "Open": { "letter": "GM", "percent": 999.0, "highPercent": -5.0 } },
+            "classifiers": {
+                "Open": [
+                    { "date": "2024-01-01", "classifierCode": "99-11", "percent": 100000.0, "flag": "Y", "source": "club" }
+                ]
+            },
+            "fetchedAt": "2025-01-01T00:00:00Z", "source": "fetch"
+        }
+        """.data(using: .utf8)!
+        let record = try JSONDecoder().decode(ShooterRecord.self, from: json)
+        XCTAssertEqual(record.currentClasses[.open]?.percent, 200.0)
+        XCTAssertEqual(record.currentClasses[.open]?.highPercent, 0.0)
+        XCTAssertEqual(record.classifiers[.open]?.first?.percent, 200.0)
+    }
+
     func testMajorMatchSource() throws {
         let json = """
         { "date": "2024-03-01", "classifierCode": "MM", "percent": 92.5, "flag": "Y", "source": "majorMatch", "matchName": "Area 6" }

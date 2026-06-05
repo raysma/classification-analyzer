@@ -9,9 +9,10 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Customized,
+  useXAxisScale,
+  useYAxisScale,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import type { ValidatedClassifier } from '../lib/validation'
 import type { ClassificationSnapshot, ClassLetter } from '../types/index'
 import { classFor } from '../lib/rules'
@@ -137,7 +138,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
   const xPad = (maxX - minX) * 0.05 || 86400000
 
   const renderTooltip = useCallback(
-    (props: TooltipProps<number, string>) => {
+    (props: TooltipContentProps) => {
       const { active, payload, label } = props
       if (!active || !payload?.length) return null
 
@@ -183,7 +184,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
           <ComposedChart
             data={chartData}
             margin={{ top: 8, right: 48, bottom: 8, left: 0 }}
-            onMouseMove={(state: { isTooltipActive?: boolean; activeLabel?: number | string }) => {
+            onMouseMove={(state: { isTooltipActive?: boolean; activeLabel?: number | string | undefined }) => {
               if (state.isTooltipActive && typeof state.activeLabel === 'number') {
                 setActiveX(state.activeLabel)
               } else {
@@ -208,10 +209,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
               width={40}
             />
             <Tooltip content={renderTooltip} isAnimationActive={false} />
-            <Legend
-              wrapperStyle={{ fontSize: 12 }}
-              payload={[{ value: 'Classification %', type: 'line', color: '#0ea5e9' }]}
-            />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
 
             {CLASS_BANDS.map((band) => (
               <ReferenceLine
@@ -236,52 +234,54 @@ export default function ProgressChart({ classifiers, history }: Props) {
             />
 
             {/*
-             * Score dots are rendered via Customized rather than a second
-             * <Line> series. A second Line with its own `data` prop confuses
-             * Recharts' tooltip activeIndex (it ends up mapping series by
-             * index instead of by X-value), and a Line whose data shares
-             * `chartData` can only render one dot per row — but a single
-             * date can carry multiple classifiers. Customized has direct
-             * access to the axis scales, so we can project every score's
-             * (x, pct) to pixels and draw one circle per classifier.
+             * Score dots are drawn by a custom in-chart component rather than
+             * a second <Line> series. A second Line with its own `data` prop
+             * confuses Recharts' tooltip activeIndex (it ends up mapping series
+             * by index instead of by X-value), and a Line whose data shares
+             * `chartData` can only render one dot per row — but a single date
+             * can carry multiple classifiers. ScoreDots reads the axis scales
+             * via Recharts' v3 hooks, so we can project every score's (x, pct)
+             * to pixels and draw one circle per classifier.
              */}
-            <Customized component={(chartProps: unknown) => {
-              const { xAxisMap, yAxisMap } = chartProps as {
-                xAxisMap?: Record<string, { scale?: (v: number) => number }>
-                yAxisMap?: Record<string, { scale?: (v: number) => number }>
-              }
-              const xScale = xAxisMap ? Object.values(xAxisMap)[0]?.scale : undefined
-              const yScale = yAxisMap ? Object.values(yAxisMap)[0]?.scale : undefined
-              if (!xScale || !yScale) return null
-              return (
-                <g>
-                  {chartData.flatMap((row) =>
-                    row.scores.map((score) => {
-                      const cx = xScale(row.x)
-                      const cy = yScale(score.pct)
-                      const color = SCORE_POINT_COLORS[classFor(score.pct)]
-                      const isActive = row.x === activeX
-                      return (
-                        <circle
-                          key={`dot-${row.x}-${score.code}`}
-                          cx={cx}
-                          cy={cy}
-                          r={isActive ? 7 : 5}
-                          fill={color}
-                          stroke={isActive ? 'white' : 'none'}
-                          strokeWidth={isActive ? 2 : 0}
-                          opacity={isActive ? 0.95 : 0.85}
-                          style={{ pointerEvents: 'none' }}
-                        />
-                      )
-                    }),
-                  )}
-                </g>
-              )
-            }} />
+            <ScoreDots rows={chartData} activeX={activeX} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
+  )
+}
+
+// Rendered inside <ComposedChart> so the v3 scale hooks resolve against the
+// chart context. Returns one <circle> per classifier, projected to pixels via
+// the X (time) and Y (percent) scales.
+function ScoreDots({ rows, activeX }: { rows: ChartRow[]; activeX: number | null }) {
+  const xScale = useXAxisScale()
+  const yScale = useYAxisScale()
+  if (!xScale || !yScale) return null
+  return (
+    <g>
+      {rows.flatMap((row) =>
+        row.scores.map((score) => {
+          const cx = xScale(row.x)
+          const cy = yScale(score.pct)
+          if (cx == null || cy == null) return null
+          const color = SCORE_POINT_COLORS[classFor(score.pct)]
+          const isActive = row.x === activeX
+          return (
+            <circle
+              key={`dot-${row.x}-${score.code}`}
+              cx={cx}
+              cy={cy}
+              r={isActive ? 7 : 5}
+              fill={color}
+              stroke={isActive ? 'white' : 'none'}
+              strokeWidth={isActive ? 2 : 0}
+              opacity={isActive ? 0.95 : 0.85}
+              style={{ pointerEvents: 'none' }}
+            />
+          )
+        }),
+      )}
+    </g>
   )
 }
