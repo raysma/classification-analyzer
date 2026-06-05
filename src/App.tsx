@@ -99,7 +99,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
 
 function TabNav({ currentTab, onChange }: { currentTab: Tab; onChange: (t: Tab) => void }) {
   return (
-    <nav role="tablist" aria-label="Sections" className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+    <div role="tablist" aria-label="Sections" className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
       {TABS.map((tab) => {
         const isActive = currentTab === tab.id
         return (
@@ -119,7 +119,7 @@ function TabNav({ currentTab, onChange }: { currentTab: Tab; onChange: (t: Tab) 
           </button>
         )
       })}
-    </nav>
+    </div>
   )
 }
 
