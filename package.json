@@ -31,7 +31,7 @@
     "node-html-parser": "^7.0.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "recharts": "^2.15.4",
+    "recharts": "^3.8.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
