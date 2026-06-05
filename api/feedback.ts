@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'node:crypto'
 import * as Sentry from '@sentry/node'
 import { FeedbackInputSchema, type FeedbackInput } from '../src/lib/validation.js'
+import { getClientIp } from './_lib/clientIp.js'
 
 const IS_PROD = process.env['VERCEL_ENV'] === 'production'
 const DEFAULT_REPO = 'raysma/classification-analyzer'
@@ -72,6 +73,27 @@ function stripBackticks(s: string): string {
   return s.replace(/`+/g, '')
 }
 
+// Neutralize Markdown/HTML in free-form user text before it lands in a PUBLIC
+// GitHub issue. Numeric HTML entities still render as the literal character, so
+// prose stays readable while `@mentions`, `[phishing](links)`, raw HTML, and
+// `</details>` breakout are all defanged.
+function escapeIssueMarkdown(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/@/g, '&#64;')
+    .replace(/`/g, '&#96;')
+    .replace(/\[/g, '&#91;')
+    .replace(/\]/g, '&#93;')
+}
+
+// Single-line context values are rendered as inline code spans, so backtick
+// removal is enough to prevent breakout.
+function codeSpan(s: string): string {
+  return `\`${stripBackticks(s)}\``
+}
+
 function normalizeMultiline(s: string): string {
   return s.replace(/\r\n/g, '\n').trim()
 }
@@ -84,7 +106,7 @@ function buildIssueBody(input: FeedbackInput): string {
   const redacted = '_redacted_'
   return `**Type:** ${typeLabel}
 
-${desc}
+${escapeIssueMarkdown(desc)}
 
 ---
 
@@ -92,8 +114,8 @@ ${desc}
 <summary>Auto-attached context</summary>
 
 - **App version:** ${ctx.appSha ? `\`${ctx.appSha.slice(0, 7)}\`` : redacted}
-- **URL:** ${ctx.url ?? redacted}
-- **Member number:** ${ctx.memberNumber ?? redacted}
+- **URL:** ${ctx.url ? codeSpan(ctx.url) : redacted}
+- **Member number:** ${ctx.memberNumber ? codeSpan(ctx.memberNumber) : redacted}
 - **Division:** ${ctx.division ?? redacted}
 - **Viewport:** ${ctx.viewport ?? redacted}
 - **User agent:** ${ctx.userAgent ? `\`${stripBackticks(ctx.userAgent)}\`` : redacted}
@@ -111,10 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const ip =
-    (typeof req.headers['x-forwarded-for'] === 'string'
-      ? req.headers['x-forwarded-for'].split(',')[0]
-      : req.socket.remoteAddress) ?? 'unknown'
+  const ip = getClientIp(req)
 
   if (!checkRateLimit(ip)) {
     res.status(429).json({ error: 'rate_limited' })
