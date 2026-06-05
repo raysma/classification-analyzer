@@ -43,10 +43,10 @@ public struct ShooterRecord: Codable, Sendable, Hashable {
         source = try c.decode(RecordSource.self, forKey: .source)
 
         let rawCurrent = try c.decode([String: ClassInfo].self, forKey: .currentClasses)
-        currentClasses = Self.bridge(rawCurrent)
+        currentClasses = Self.bridge(rawCurrent).mapValues { $0.sanitized() }
 
         let rawClassifiers = try c.decode([String: [Classifier]].self, forKey: .classifiers)
-        classifiers = Self.bridge(rawClassifiers)
+        classifiers = Self.bridge(rawClassifiers).mapValues { list in list.map { $0.sanitized() } }
     }
 
     public func encode(to encoder: Encoder) throws {
