@@ -4,8 +4,7 @@ import * as Sentry from '@sentry/node'
 import { FeedbackInputSchema, type FeedbackInput } from '../src/lib/validation.js'
 import { getClientIp } from './_lib/clientIp.js'
 import { checkRateLimit } from './_lib/rateLimit.js'
-
-const IS_PROD = process.env['VERCEL_ENV'] === 'production'
+import { debugAuthorized } from './_lib/debug.js'
 const DEFAULT_REPO = 'raysma/classification-analyzer'
 const GITHUB_TIMEOUT_MS = 10_000
 
@@ -130,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!parsed.success) {
     res.status(400).json({
       error: 'invalid_input',
-      ...(IS_PROD ? {} : { issues: parsed.error.issues }),
+      ...(debugAuthorized(req) ? { issues: parsed.error.issues } : {}),
     })
     return
   }

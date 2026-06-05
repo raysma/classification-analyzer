@@ -7,10 +7,10 @@ import { fetchViaZyte, ZYTE_TIMEOUT_MS } from './_lib/zyteClient.js'
 import { getClientIp } from './_lib/clientIp.js'
 import { checkRateLimit } from './_lib/rateLimit.js'
 import { cacheGet, cacheSet } from './_lib/cache.js'
+import { debugAuthorized } from './_lib/debug.js'
 import type { ValidatedShooterRecord } from '../src/lib/validation.js'
 
 const MEMBER_RE = /^[A-Z]{1,3}\d+$/
-const IS_PROD = process.env['VERCEL_ENV'] === 'production'
 
 const SENTRY_DSN = process.env['SENTRY_DSN']
 if (SENTRY_DSN) {
@@ -50,6 +50,12 @@ function hashMember(member: string): string {
   return createHash('sha256').update(member).digest('hex').slice(0, 8)
 }
 
+// Strip line breaks from scraped strings before they reach logs, so a crafted
+// upstream page can't forge or split log lines.
+function sanitizeLog(s: string): string {
+  return s.replace(/[\r\n\u2028\u2029]/g, ' ')
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.status(405).json({ error: 'method_not_allowed' })
@@ -68,6 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(429).json({ error: 'rate_limited' })
     return
   }
+
+  const debug = debugAuthorized(req)
 
   const cacheKey = `classification:v1:${member}`
   const cached = await cacheGet<CachedRecord>(cacheKey)
@@ -116,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(502).json({
       error: 'fetch_failed',
       ...(result.httpStatus ? { status: result.httpStatus } : {}),
-      ...(IS_PROD ? {} : result.detail ? { responseSnippet: result.detail } : {}),
+      ...(debug && result.detail ? { responseSnippet: result.detail } : {}),
     })
     return
   }
@@ -136,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (parsed.error === 'parse_failed') {
       const titleMatch = /<title[^>]*>([^<]*)<\/title>/i.exec(html)
-      const pageTitle = titleMatch?.[1]?.trim() ?? '(no title)'
+      const pageTitle = sanitizeLog(titleMatch?.[1]?.trim() ?? '(no title)')
       const totalLen = html.length
 
       console.error(
@@ -150,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
 
       let responseSnippet: string | undefined
-      if (!IS_PROD) {
+      if (debug) {
         const snippets: string[] = [
           `Page title: "${pageTitle}" | total length: ${totalLen}`,
         ]
@@ -200,14 +208,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     res.status(502).json({
       error: 'validation_failed',
-      ...(IS_PROD ? {} : { issues: validated.error.issues }),
+      ...(debug ? { issues: validated.error.issues } : {}),
     })
     return
   }
 
   if (parsed.warnings.length > 0) {
     console.warn(
-      `[classification] ${parsed.warnings.length} warning(s) for member=${hashMember(member)}: ${parsed.warnings.slice(0, 5).join(' | ')}`,
+      `[classification] ${parsed.warnings.length} warning(s) for member=${hashMember(member)}: ${sanitizeLog(parsed.warnings.slice(0, 5).join(' | '))}`,
     )
     const unknownFlags = new Set<string>()
     for (const w of parsed.warnings) {
