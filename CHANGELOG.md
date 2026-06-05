@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-05
+
+### Bug fixes
+
+- **Manual paste handles tab-stripped tables**: pastes whose tabs were flattened to spaces now parse instead of failing with "no rows found".
+
+### Accessibility
+
+- **Section tabs**: the Overview/What-If/Scores tab bar is now exposed as a proper tablist to screen readers.
+
 ## 2026-05-26
 
 ### New features
