@@ -30,7 +30,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^2.15.3",
-    "zod": "^3.25.53",
+    "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
