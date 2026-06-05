@@ -12,8 +12,10 @@ enum DeepLinkRouter {
         let items = components.queryItems ?? []
 
         var triggerLookup = false
-        if let m = items.first(where: { $0.name == "m" })?.value, !m.isEmpty {
-            model.memberNumber = m
+        // Only honor a member number that matches the accepted format, so an
+        // untrusted link can't trigger an arbitrary/garbage network lookup.
+        if let m = items.first(where: { $0.name == "m" })?.value, MemberNumber.isValid(m) {
+            model.memberNumber = MemberNumber.canonical(m)
             triggerLookup = true
         }
         if let raw = items.first(where: { $0.name == "div" })?.value,

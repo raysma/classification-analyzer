@@ -30,3 +30,21 @@ public struct Classifier: Codable, Sendable, Hashable {
         self.matchName = matchName
     }
 }
+
+extension Classifier {
+    /// Defensive clamp of the charted `percent` after decoding a proxy response.
+    /// The proxy already bounds this; this only guards against a malformed or
+    /// compromised response distorting the chart/projection math.
+    func sanitized() -> Classifier {
+        Classifier(
+            date: date,
+            classifierCode: classifierCode,
+            classifierName: classifierName,
+            hitFactor: hitFactor,
+            percent: percent.clamped(to: 0...200),
+            flag: flag,
+            source: source,
+            matchName: matchName
+        )
+    }
+}
