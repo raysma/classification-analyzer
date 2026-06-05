@@ -75,22 +75,40 @@ export async function fetchViaZyte(targetUrl: string): Promise<ScrapeResult> {
     }
 
     const body = (await response.json()) as { browserHtml?: unknown; statusCode?: unknown }
-    const upstreamStatus = typeof body.statusCode === 'number' ? body.statusCode : 200
+    const upstreamStatus = typeof body.statusCode === 'number' ? body.statusCode : undefined
+
     if (upstreamStatus === 404) {
       return { ok: false, reason: 'upstream_404' }
+    }
+    // A non-2xx upstream page (bot-block, 5xx, login redirect) must not be handed
+    // to the parser — that would mislabel it as a parse failure. Surface it as a
+    // distinct fetch error instead.
+    if (upstreamStatus !== undefined && upstreamStatus >= 400) {
+      return {
+        ok: false,
+        reason: 'other',
+        httpStatus: upstreamStatus,
+        detail: `upstream ${upstreamStatus}`,
+      }
     }
 
     const html = typeof body.browserHtml === 'string' ? body.browserHtml : ''
     if (!html) {
+      // Previously a missing statusCode silently defaulted to 200; treat an empty
+      // body as the error it is rather than guessing success.
       return {
         ok: false,
         reason: 'other',
-        detail: 'zyte response missing browserHtml',
+        detail:
+          upstreamStatus === undefined
+            ? 'zyte response missing statusCode and browserHtml'
+            : 'zyte response missing browserHtml',
       }
     }
 
-    console.log(`[Zyte] ok ${upstreamStatus} (${elapsedMs}ms, ${html.length}b)`)
-    return { ok: true, html, upstreamStatus }
+    const resolvedStatus = upstreamStatus ?? 200
+    console.log(`[Zyte] ok ${resolvedStatus} (${elapsedMs}ms, ${html.length}b)`)
+    return { ok: true, html, upstreamStatus: resolvedStatus }
   } catch (err) {
     clearTimeout(timeoutId)
     const elapsedMs = Date.now() - startedAt

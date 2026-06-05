@@ -1,7 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Division, RecentLookup } from '../types/index'
-import type { ValidatedShooterRecord, ValidatedClassifier } from '../lib/validation'
+import {
+  RecentLookupSchema,
+  type ValidatedShooterRecord,
+  type ValidatedClassifier,
+} from '../lib/validation'
 
 export interface HypotheticalScore {
   id: string
@@ -139,8 +143,14 @@ export const useAppStore = create<AppState>()(
         return {
           ...currentState,
           selectedDivision: persisted.selectedDivision ?? currentState.selectedDivision,
+          // Don't trust the shape of persisted entries — tampered/legacy
+          // localStorage could carry arbitrary values. Keep only well-formed ones.
           recentLookups: Array.isArray(persisted.recentLookups)
-            ? persisted.recentLookups
+            ? (
+                persisted.recentLookups.filter(
+                  (r) => RecentLookupSchema.safeParse(r).success,
+                ) as RecentLookup[]
+              ).slice(0, RECENT_LOOKUPS_CAP)
             : currentState.recentLookups,
         }
       },
