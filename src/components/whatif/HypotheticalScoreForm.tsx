@@ -50,7 +50,7 @@ export default function HypotheticalScoreForm() {
           placeholder="e.g. 69.6969"
           disabled={isFull}
           aria-label="Hypothetical score percent"
-          className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-base sm:text-sm"
+          className="w-28 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 px-2 py-1 text-base sm:text-sm"
         />
         <button
           type="button"

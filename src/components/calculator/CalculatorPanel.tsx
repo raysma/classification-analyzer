@@ -175,7 +175,7 @@ export default function CalculatorPanel({ hasRecord, onNavigate }: Props) {
             }}
             placeholder="e.g. 6.9420"
             aria-label="Hit factor"
-            className="w-full h-9 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-base sm:text-sm"
+            className="w-full h-9 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-500 px-2 text-base sm:text-sm"
           />
         </label>
       </div>
