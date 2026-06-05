@@ -57,6 +57,7 @@ The serverless functions read the following from Vercel project env vars:
 | `SENTRY_DSN` | no | Server-side error reporting. When unset, errors are logged but not sent to Sentry. |
 | `GITHUB_TOKEN` | yes (for feedback) | Fine-grained PAT scoped to `raysma/classification-analyzer` with `issues:write` only. Used by `api/feedback.ts` to file in-app feedback as GitHub Issues. |
 | `FEEDBACK_REPO` | no | Override for the feedback issue target repo (default `raysma/classification-analyzer`). Useful for testing against a throwaway repo. |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | no | Durable rate-limit counters + a server-side cache in front of Zyte. When unset, rate limiting falls back to a per-instance in-memory counter and the cache is a no-op (every lookup hits Zyte). The Vercel KV integration's `KV_REST_API_URL` / `KV_REST_API_TOKEN` are also accepted. |
 
 ## Architecture
 
