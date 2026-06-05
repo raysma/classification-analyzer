@@ -143,7 +143,7 @@ export default function ProgressChart({ classifiers, history }: Props) {
       if (!active || !payload?.length) return null
 
       const row = payload[0]?.payload as ChartRow | undefined
-      if (!row) return null
+      if (!row || (row.scores.length === 0 && row.avg === null)) return null
 
       return (
         <div
@@ -208,7 +208,15 @@ export default function ProgressChart({ classifiers, history }: Props) {
               tickFormatter={(v: number) => `${v}%`}
               width={40}
             />
-            <Tooltip content={renderTooltip} isAnimationActive={false} />
+            {/*
+             * filterNull={false}: early dates carry classifier scores but no
+             * classification yet (avg === null), and the only Recharts series
+             * is the avg line. With the default filterNull, the null-valued
+             * payload entry is dropped, the payload goes empty, and the tooltip
+             * never renders for those leading dots. Keeping it preserves the
+             * row so the custom content can show the classifiers.
+             */}
+            <Tooltip content={renderTooltip} filterNull={false} isAnimationActive={false} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
 
             {CLASS_BANDS.map((band) => (
