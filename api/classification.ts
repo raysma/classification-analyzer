@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createHash } from 'node:crypto'
 import * as Sentry from '@sentry/node'
 import { parseClassificationHtml } from '../src/lib/parser.js'
 import { ShooterRecordSchema } from '../src/lib/validation.js'
@@ -45,10 +44,6 @@ const RATE_LIMIT = { prefix: 'rl:classification', max: 20, windowSeconds: 60 }
 // trigger a (billable) Zyte browser render. Matches the CDN s-maxage window.
 const CACHE_TTL_SECONDS = 900
 type CachedRecord = ValidatedShooterRecord & { warnings: string[] }
-
-function hashMember(member: string): string {
-  return createHash('sha256').update(member).digest('hex').slice(0, 8)
-}
 
 // Strip line breaks from scraped strings before they reach logs, so a crafted
 // upstream page can't forge or split log lines.
@@ -101,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (result.reason === 'auth') {
       await reportFailure('zyte_auth_failed', `zyte ${result.httpStatus ?? '?'}`, {
-        member: hashMember(member),
+        member,
         httpStatus: result.httpStatus,
         detail: result.detail?.slice(0, 500),
       })
@@ -110,13 +105,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (result.reason === 'timeout') {
       await reportFailure('upstream_timeout', `zyte timeout after ${ZYTE_TIMEOUT_MS}ms`, {
-        member: hashMember(member),
+        member,
       })
       res.status(504).json({ error: 'upstream_timeout' })
       return
     }
     await reportFailure('fetch_failed', `zyte ${result.reason} ${result.httpStatus ?? ''}`.trim(), {
-      member: hashMember(member),
+      member,
       zyteReason: result.reason,
       httpStatus: result.httpStatus,
       detail: result.detail?.slice(0, 500),
@@ -148,11 +143,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const totalLen = html.length
 
       console.error(
-        `[classification] parse_failed member=${hashMember(member)} title="${pageTitle}" len=${totalLen}`,
+        `[classification] parse_failed member=${member} title="${pageTitle}" len=${totalLen}`,
       )
 
       await reportFailure('parse_failed', `title="${pageTitle}" len=${totalLen}`, {
-        member: hashMember(member),
+        member,
         pageTitle,
         htmlLength: totalLen,
       })
@@ -203,7 +198,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!validated.success) {
     console.error('[classification] zod validation failed:', validated.error.message)
     await reportFailure('validation_failed', validated.error.message, {
-      member: hashMember(member),
+      member,
       issues: validated.error.issues.slice(0, 10),
     })
     res.status(502).json({
@@ -215,7 +210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (parsed.warnings.length > 0) {
     console.warn(
-      `[classification] ${parsed.warnings.length} warning(s) for member=${hashMember(member)}: ${sanitizeLog(parsed.warnings.slice(0, 5).join(' | '))}`,
+      `[classification] ${parsed.warnings.length} warning(s) for member=${member}: ${sanitizeLog(parsed.warnings.slice(0, 5).join(' | '))}`,
     )
     const unknownFlags = new Set<string>()
     for (const w of parsed.warnings) {
