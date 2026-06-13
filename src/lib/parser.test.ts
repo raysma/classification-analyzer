@@ -174,6 +174,35 @@ describe('parseClassificationHtml', () => {
       const openRows = result.doc.classifiers['Open'] ?? []
       expect(openRows.length).toBe(1)
     })
+
+    it('skips club rows with a blank classifier code instead of emitting an empty code', () => {
+      const html = `<html><body>
+        <table class="table table-striped">
+          <tbody>
+            <tr><th scope="row">Shooter Name:</th><td>Test User</td></tr>
+            <tr><th scope="row">Member Number:</th><td>A99999</td></tr>
+            <tr><th scope="row">Membership Expiry Date:</th><td>3/15/26</td></tr>
+          </tbody>
+        </table>
+        <table class="table table-striped table-responsive">
+          <thead class="thead-inverse">
+            <tr><th colspan="8"><a href="#" class="divisionClick" data-division="Open">Open Classifiers</a></th></tr>
+          </thead>
+          <tbody id="Open-dropDown">
+            <tr><td>Date</td><td>Number</td><td>Club</td><td>F</td><td>Percent</td><td>HF</td><td>Entered</td><td>Source</td></tr>
+            <tr><td>3/15/24</td><td></td><td>Club</td><td>Y</td><td>70.0</td><td>8.0</td><td>3/18/24</td><td>Stage Score</td></tr>
+            <tr><td>3/16/24</td><td>99-12</td><td>Club</td><td>Y</td><td>71.0</td><td>8.1</td><td>3/18/24</td><td>Stage Score</td></tr>
+          </tbody>
+        </table>
+      </body></html>`
+      const result = parseClassificationHtml(html)
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const openRows = result.doc.classifiers['Open'] ?? []
+      expect(openRows.length).toBe(1)
+      expect(openRows[0]?.classifierCode).toBe('99-12')
+      expect(result.warnings.some((w) => w.includes('Missing classifier code'))).toBe(true)
+    })
   })
 })
 
