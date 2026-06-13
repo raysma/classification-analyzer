@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-13
+
+### Bug fixes
+
+- **Resilient to incomplete USPSA rows**: a classifier row missing its number is now skipped instead of failing the whole lookup.
+
 ## 2026-06-05
 
 ### Bug fixes
