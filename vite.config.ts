@@ -8,11 +8,13 @@ export default defineConfig({
     'import.meta.env.VITE_APP_SHA': JSON.stringify(process.env['VERCEL_GIT_COMMIT_SHA'] ?? null),
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          recharts: ['recharts'],
-          query: ['@tanstack/react-query', '@tanstack/react-query-persist-client', '@tanstack/query-sync-storage-persister'],
+        codeSplitting: {
+          groups: [
+            { name: 'recharts', test: /recharts/ },
+            { name: 'query', test: /@tanstack/ },
+          ],
         },
       },
     },
