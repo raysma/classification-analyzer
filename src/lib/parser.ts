@@ -259,6 +259,15 @@ export function parseClassificationHtml(html: string): ParseResult {
 
       const isMajorMatch = sourceRaw.toLowerCase().includes('major')
 
+      // Club rows must carry a classifier number; major-match rows synthesize
+      // 'MAJOR' below. USPSA occasionally serves a club row with a blank Number
+      // cell — skip it with a warning rather than emitting an empty code that
+      // fails Zod validation and rejects the entire record downstream.
+      if (!isMajorMatch && !classifierCodeRaw) {
+        warnings.push(`Missing classifier code in ${division}, skipping row`)
+        continue
+      }
+
       let hitFactor: number | undefined
       const hf = parseFloat(hfRaw)
       if (!isNaN(hf)) hitFactor = hf
