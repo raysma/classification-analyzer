@@ -22,8 +22,8 @@ A web app that fetches a USPSA shooter's classification record by member number,
 | Concern              | Choice                                    | Why                                                                 |
 |----------------------|-------------------------------------------|---------------------------------------------------------------------|
 | Language             | **TypeScript** (strict, no `any`)         | Catches bugs at the parser/rules boundary.                          |
-| UI framework         | **React 18** (function components only)   | Plenty of escape hatches; no `React.FC`.                            |
-| Build tool           | **Vite 5**                                | Fast dev server, ESM-native, zero-config TS/JSX.                    |
+| UI framework         | **React 19** (function components only)   | Plenty of escape hatches; no `React.FC`.                            |
+| Build tool           | **Vite 8**                                | Fast dev server, ESM-native, zero-config TS/JSX.                    |
 | Styling              | **Tailwind CSS**                          | No CSS files to manage, no class-name collisions.                   |
 | State                | **Zustand**                               | One store, no providers. Scenario state lives here.                 |
 | Data fetching        | **TanStack Query**                        | Caching/staleness for `/api/classification`.                        |
