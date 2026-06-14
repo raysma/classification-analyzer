@@ -190,6 +190,7 @@ function AppInner() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [tab, setTab] = useState<Tab>(() => readUrlState().tab)
   const [lookupExpanded, setLookupExpanded] = useState(true)
+  const [recordPresent, setRecordPresent] = useState(false)
 
   const {
     memberNumber,
@@ -212,8 +213,6 @@ function AppInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useUrlSync(memberNumber, selectedDivision, tab)
-
   const { data, isFetching, error } = useQuery({
     queryKey: ['classification', memberNumber],
     queryFn: async () => {
@@ -228,6 +227,13 @@ function AppInner() {
   // Fetched record takes priority over pasted record
   const record = data?.record ?? pastedRecord ?? null
 
+  const divisionKeys = record ? (Object.keys(record.classifiers) as Division[]) : []
+  // Default to the first division until the user explicitly picks one. Derived
+  // during render rather than synced via an effect (react-hooks/set-state-in-effect).
+  const effectiveDivision = selectedDivision ?? divisionKeys[0] ?? null
+
+  useUrlSync(memberNumber, effectiveDivision, tab)
+
   useEffect(() => {
     if (data?.record && data.record.source === 'fetch') {
       addRecentLookup(data.record.memberNumber, data.record.name)
@@ -235,20 +241,13 @@ function AppInner() {
   }, [data?.record, addRecentLookup])
 
   // Once we have a record, collapse the lookup form so it doesn't dominate
-  // vertical space. User reopens with the Change button.
-  useEffect(() => {
-    if (record) setLookupExpanded(false)
-  }, [record])
-
-  // Auto-select first division when data arrives
-  useEffect(() => {
-    if (record) {
-      const divs = Object.keys(record.classifiers) as Division[]
-      if (divs.length > 0 && !selectedDivision) {
-        setSelectedDivision(divs[0] ?? null)
-      }
-    }
-  }, [record, selectedDivision, setSelectedDivision])
+  // vertical space (user reopens with the Change button). Adjusted during render
+  // on the absent→present transition rather than in an effect.
+  const hasRecord = !!record
+  if (hasRecord !== recordPresent) {
+    setRecordPresent(hasRecord)
+    if (hasRecord) setLookupExpanded(false)
+  }
 
   function handleLookup(member: string) {
     setMemberNumber(member)
@@ -258,14 +257,13 @@ function AppInner() {
     queryClient.invalidateQueries({ queryKey: ['classification', member] })
   }
 
-  const divisionKeys = record ? (Object.keys(record.classifiers) as Division[]) : []
   const scoreCounts: Partial<Record<Division, number>> = {}
   for (const div of divisionKeys) {
     scoreCounts[div] = record?.classifiers[div]?.length ?? 0
   }
 
   const activeClassifiers =
-    record && selectedDivision ? [...(record.classifiers[selectedDivision] ?? [])] : []
+    record && effectiveDivision ? [...(record.classifiers[effectiveDivision] ?? [])] : []
 
   const rollingWindow = activeClassifiers.length > 0 ? getCurrentWindow(activeClassifiers) : null
   const currentPercent = rollingWindow?.classificationScore() ?? null
@@ -373,7 +371,7 @@ function AppInner() {
             <DivisionTabs
               divisions={divisionKeys}
               scoreCounts={scoreCounts}
-              selected={selectedDivision}
+              selected={effectiveDivision}
               onSelect={(d) => setSelectedDivision(d)}
             />
           )}
@@ -384,60 +382,60 @@ function AppInner() {
             <CalculatorPanel hasRecord={!!record} onNavigate={setTab} />
           )}
 
-          {record && tab === 'overview' && selectedDivision && activeClassifiers.length === 0 && (
+          {record && tab === 'overview' && effectiveDivision && activeClassifiers.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No classifiers found for {formatDivision(selectedDivision)}.
+              No classifiers found for {formatDivision(effectiveDivision)}.
             </p>
           )}
 
-          {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
+          {record && tab === 'overview' && effectiveDivision && activeClassifiers.length > 0 && (
             <SummaryCard
               projectedPercent={currentPercent}
               windowSize={windowScores.length}
-              division={selectedDivision}
-              crossDivisionFloor={crossDivisionFloorClass(record.classifiers, selectedDivision)}
+              division={effectiveDivision}
+              crossDivisionFloor={crossDivisionFloorClass(record.classifiers, effectiveDivision)}
               {...(allTimeHighPercent !== undefined ? { allTimeHighPercent } : {})}
-              {...(record.currentClasses[selectedDivision]
-                ? { officialClass: record.currentClasses[selectedDivision] }
+              {...(record.currentClasses[effectiveDivision]
+                ? { officialClass: record.currentClasses[effectiveDivision] }
                 : {})}
             />
           )}
 
-          {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && (
+          {record && tab === 'overview' && effectiveDivision && activeClassifiers.length > 0 && (
             <ClassUpInsights
               classifiers={activeClassifiers}
-              division={selectedDivision}
-              {...(record.currentClasses[selectedDivision]
-                ? { officialClass: record.currentClasses[selectedDivision] }
+              division={effectiveDivision}
+              {...(record.currentClasses[effectiveDivision]
+                ? { officialClass: record.currentClasses[effectiveDivision] }
                 : {})}
             />
           )}
 
-          {record && tab === 'overview' && selectedDivision && activeClassifiers.length >= 4 && history.length > 0 && (
+          {record && tab === 'overview' && effectiveDivision && activeClassifiers.length >= 4 && history.length > 0 && (
             <ProgressChart classifiers={activeClassifiers} history={history} />
           )}
 
-          {record && tab === 'overview' && selectedDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
+          {record && tab === 'overview' && effectiveDivision && activeClassifiers.length > 0 && activeClassifiers.length < 4 && (
             <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 rounded-md px-3 py-2">
-              Only {activeClassifiers.length} of 4 classifiers in {formatDivision(selectedDivision)} — needs{' '}
+              Only {activeClassifiers.length} of 4 classifiers in {formatDivision(effectiveDivision)} — needs{' '}
               {4 - activeClassifiers.length} more for an initial classification.
             </p>
           )}
 
-          {record && tab === 'whatif' && selectedDivision && windowScores.length > 0 && (
+          {record && tab === 'whatif' && effectiveDivision && windowScores.length > 0 && (
             <WhatIfPanel
               windowScores={windowScores}
               currentPercent={currentPercent}
             />
           )}
 
-          {record && tab === 'whatif' && selectedDivision && windowScores.length === 0 && (
+          {record && tab === 'whatif' && effectiveDivision && windowScores.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No scores in window for {formatDivision(selectedDivision)} — nothing to simulate.
+              No scores in window for {formatDivision(effectiveDivision)} — nothing to simulate.
             </p>
           )}
 
-          {record && tab === 'scores' && selectedDivision && activeClassifiers.length > 0 && (
+          {record && tab === 'scores' && effectiveDivision && activeClassifiers.length > 0 && (
             <ClassifierTable
               classifiers={activeClassifiers}
               highlightedIds={includedIds}
@@ -446,9 +444,9 @@ function AppInner() {
             />
           )}
 
-          {record && tab === 'scores' && selectedDivision && activeClassifiers.length === 0 && (
+          {record && tab === 'scores' && effectiveDivision && activeClassifiers.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No classifiers found for {formatDivision(selectedDivision)}.
+              No classifiers found for {formatDivision(effectiveDivision)}.
             </p>
           )}
         </div>

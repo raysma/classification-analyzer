@@ -132,9 +132,12 @@ export default function ProgressChart({ classifiers, history }: Props) {
     return [...byX.values()].sort((a, b) => a.x - b.x)
   }, [classifiers, history])
 
+  // Stable fallback anchor for the empty-data case; captured once so the X
+  // domain stays pure across re-renders (react-hooks/purity).
+  const [fallbackNow] = useState(() => Date.now())
   const xs = chartData.map((r) => r.x)
-  const minX = xs.length > 0 ? xs[0]! : Date.now()
-  const maxX = xs.length > 0 ? xs[xs.length - 1]! : Date.now()
+  const minX = xs.length > 0 ? xs[0]! : fallbackNow
+  const maxX = xs.length > 0 ? xs[xs.length - 1]! : fallbackNow
   const xPad = (maxX - minX) * 0.05 || 86400000
 
   const renderTooltip = useCallback(
